@@ -1,4 +1,4 @@
 var On = require('./lib/on.js')
 
-var on = new On()
-module.exports = on
+var On = On()
+module.exports = On
