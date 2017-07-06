@@ -1,29 +1,29 @@
 {
-  "name": "onjs",
-  "version": "0.0.1",
-  "description": "On.js is an event library based on RabbitMQ that helps you control events on a microservices arquitecture",
-  "main": "index.js",
-  "scripts": {
-    "test": "mocha test/*.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/luiselizondo/onjs.git"
-  },
-  "keywords": [
-    "events"
-  ],
-  "author": "Luis Elizondo",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/luiselizondo/onjs/issues"
-  },
-  "homepage": "https://github.com/luiselizondo/onjs#readme",
-  "devDependencies": {},
-  "dependencies": {
-    "amqplib": "^0.5.1",
-    "bull": "^3.0.0-rc.4",
-    "q": "^1.5.0",
-    "uuid": "^3.1.0"
-  }
+	"name": "onjs",
+	"version": "0.0.2",
+	"description": "On.js is an event library based on RabbitMQ that helps you control events on a microservices arquitecture",
+	"main": "index.js",
+	"scripts": {
+		"test": "mocha test/*.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/luiselizondo/onjs.git"
+	},
+	"keywords": [
+		"events"
+	],
+	"author": "Luis Elizondo",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/luiselizondo/onjs/issues"
+	},
+	"homepage": "https://github.com/luiselizondo/onjs#readme",
+	"devDependencies": {},
+	"dependencies": {
+		"amqplib": "^0.5.1",
+		"bull": "^3.0.0-rc.4",
+		"q": "^1.5.0",
+		"uuid": "^3.1.0"
+	}
 }
