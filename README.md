@@ -54,6 +54,11 @@ on
     // console.log(data.accountUpdated)
   })
 
+on
+	.requestReceived('someRequest')
+	.withProperties(['userId'])
+	.respond(actions.doSomethingAndReturnToRequester)
+
 on.listen(options)
 on.initQueue(someQueueName)
 
