@@ -1,0 +1,87 @@
+#!/bin/bash
+
+RABBIT_CONTAINER_NAME=onjs_rabbit_test
+RABBIT_CONTAINER_PORT1=34369
+RABBIT_CONTAINER_PORT2=35671
+RABBIT_CONTAINER_PORT3=35672
+RABBIT_CONTAINER_PORT4=46672
+
+REDIS_CONTAINER_NAME=onjs_redis_test
+REDIS_CONTAINER_PORT=19379
+
+function createRabbitContainer() {
+	id=$(docker run -d --name ${RABBIT_CONTAINER_NAME} -p ${RABBIT_CONTAINER_PORT1}:4369 -p ${RABBIT_CONTAINER_PORT2}:5671 -p ${RABBIT_CONTAINER_PORT3}:5672 -p ${RABBIT_CONTAINER_PORT4}:25672 -e RABBITMQ_ERLANG_COOKIE=SWQOKODSQALRPCLNMEQG -e RABBITMQ_DEFAULT_USER=rabbitmq -e RABBITMQ_DEFAULT_PASS=rabbitmq -e RABBITMQ_DEFAULT_VHOST=/ --hostname rabbitmq rabbitmq:alpine)
+	echo $id
+}
+
+function createRedisContainer() {
+  id=$(docker run -d --name ${REDIS_CONTAINER_NAME} -p ${REDIS_CONTAINER_PORT}:6379 redis:alpine)
+  echo $id
+}
+
+function startRabbitContainer() {
+	id=$(docker start ${RABBIT_CONTAINER_NAME})
+  echo $id
+}
+
+function startRabbitContainer() {
+	id=$(docker start ${RABBIT_CONTAINER_NAME})
+  echo $id
+}
+
+function rabbitContainerIsRunning() {
+  status=$(docker ps --filter name=${RABBIT_CONTAINER_NAME} -q)
+  if [[ -n $status ]]; then
+    echo "running"
+  else
+    exists=$(docker ps --filter name=${RABBIT_CONTAINER_NAME} -qa)
+    if [[ -n $exists ]]; then
+      echo "exists-but-is-stopped"
+    else
+      echo "does-not-exist"
+    fi
+  fi
+}
+
+function redisContainerIsRunning() {
+  status=$(docker ps --filter name=${REDIS_CONTAINER_NAME} -q)
+  if [[ -n $status ]]; then
+    echo "running"
+  else
+    exists=$(docker ps --filter name=${REDIS_CONTAINER_NAME} -qa)
+    if [[ -n $exists ]]; then
+      echo "exists-but-is-stopped"
+    else
+      echo "does-not-exist"
+    fi
+  fi
+}
+
+redisContainerStatus=$(redisContainerIsRunning)
+
+if [[ "${redisContainerStatus}" = "running" ]]; then
+  echo "The redis container is running, doing nothing"
+elif [[ "${redisContainerStatus}" = "exists-but-is-stopped" ]]; then
+  echo "The redis container exists but is stopped, starting it"
+  startRedisContainer
+else
+  echo "The redis container is not running, starting a new Redis container using Docker"
+  createRedisContainer
+  sleep 2
+fi
+
+rabbitContainerStatus=$(rabbitContainerIsRunning)
+
+if [[ "${rabbitContainerStatus}" = "running" ]]; then
+  echo "The rabbit container is running, doing nothing"
+elif [[ "${rabbitContainerStatus}" = "exists-but-is-stopped" ]]; then
+  echo "The rabbit container exists but is stopped, starting it"
+  startRabbitContainer
+	sleep 2
+else
+  echo "The rabbit container is not running, starting a new RabbitMQ container using Docker"
+  createRabbitContainer
+  sleep 5
+fi
+
+npm test

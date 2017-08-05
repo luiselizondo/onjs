@@ -2,10 +2,101 @@
 
 Helper utility to handle and keep control of events on a microservices arquitecture handled by MQ.
 
-## Usage
+# API
+
+### Registering events
+
+The first step is to register the name of the event. The type of event will be determined by the methods you chain after you register the event
 
 ```
-var RabbitMQ = require('./lib/on/RabbitMQ')
+on.eventReceived(eventName: string)
+```
+
+### Topics
+
+The pattern of listening to a topic exchange is described at https://www.rabbitmq.com/tutorials/tutorial-five-javascript.html
+
+To achieve this on On.js you have to register the event, declare the properties you're expecting to receive so validation executes and then execute a callback
+
+```
+on
+	.eventReceived(eventName: string)
+	.withProperties(properties: array)
+	.do(callback: function)
+
+```
+
+### Queues
+
+The pattern of listening to work queues is described at https://www.rabbitmq.com/tutorials/tutorial-two-javascript.html
+
+On.js uses it's own local Redis based queue to order requests on this queue. Although RabbitMQ (the only supported system) is very good with queues it does not prevent duplicates so a local queue is created to avoid duplicates.
+
+On.js provides two options for working with queues. Processing and Dispatching
+
+Processing means that the task will be added to the queue and processed as soon as the queue determines that it can start processing it.
+
+Dispatching means that the task will be added to the queue but instead of being processed, it will be sent to MQ with another name.
+
+#### Processing
+
+```
+on
+	.eventReceived(eventName: string)
+	.withProperties(properties: array)
+	.addToQueue()
+	.andProcess(callback: function)
+```
+
+Any event received with the name registered on ```eventReceived``` will be added to the queue and then the callback defined on ```andProcess``` will be executed by the queue.
+
+#### Dispatching
+
+```
+on
+	.eventReceived(eventName: string)
+	.withProperties(properties: array)
+	.addToQueue()
+	.andDispatchAs(eventName: string)
+```
+
+Any event received with the name registered on ```eventReceived``` will be added to the queue and dispatched to MQ with the same data as received but with the name defined on the method ```andDispatchAs```
+
+### RPC Requests
+The pattern of listening to RPC requests described at https://www.rabbitmq.com/tutorials/tutorial-six-javascript.html
+
+On.js will order MQ to start listening for events registered and the callback registered will be executed by MQ and the results sent to the client who requested the data.
+
+```
+on
+	.eventReceived(eventName: string)
+	.withProperties(properties: array)
+	.respond()
+	.afterExecuting(callback: function)
+```
+
+The response will be a JSON string so you will have to parse it. The type of response will be determined by the property 'type' since an error in this context means an error with the connection of MQ and not with the execution of the callback.
+
+### Init
+
+To initialize initialize a new instance and then call .init()
+
+```
+var options = {
+	redis: {
+		host: REDIS_HOST,
+		port: REDIS_PORT
+	}
+}
+
+var on = new On(mqInstance, eventsInstance, options)
+on.init()
+```
+
+## Usage Example
+
+```
+var RabbitMQ = require('rabbitmq-lib')
 var On = require('./lib/on/on.js')
 
 var RABBITMQ_URL = process.env.RABBITMQ_URL;
@@ -14,53 +105,64 @@ var REDIS_HOST = process.env.REDIS_HOST
 var REDIS_PORT = process.env.REDIS_PORT
 
 var options = {
-  mq: {
-    url: RABBITMQ_URL,
-    exchange_name: EXCHANGE_NAME
-  },
-  redis: {
-    host: REDIS_HOST,
-    port: REDIS_PORT
-  }
+	redis: {
+		host: REDIS_HOST,
+		port: REDIS_PORT
+	}
 }
 
-var on = new On(RabbitMQ, options)
+var mqOptions = {
+	exchange_name: 'onjs_test',
+	url: 'amqp://rabbitmq:rabbitmq@localhost:35672/'
+}
+
+var EventEmitter = require('events');
+class Events extends EventEmitter {}
+var eventsInstance = new Events();
+var mq = new MQ(eventsInstance, mqOptions)
+var on = new On(mq, eventsInstance, options)
 
 on
-  .eventReceived('content.updated')
-  .withProperties(['body', 'account'])
-  .do(function (data) {
-    // Do something with data
-  })
+	.eventReceived('content.updated')
+	.withProperties(['body', 'account'])
+	.do(function (data) {
+		// Do something with data
+	})
 
 on
-  .eventReceived('content.updated')
-  .withProperties(['body', 'account'])
-  .do(function (data) {
-    // Do something with data or dispatch it to the queue
-
-    this.context.mq.dispatchToQueue('someOtherEvent', {
-      contentId: data.body.id,
-      userId: data.account.id
-    })
-  })
+	.eventReceived('content.updated')
+	.withProperties(['body', 'account'])
+	.do(function (data) {
+		// Do something with data or dispatch it to the queue
+		
+		this.context.mq.dispatchToQueue('someOtherEvent', {
+			contentId: data.body.id,
+			userId: data.account.id
+		})
+	})
 
 on
-  .eventReceived('account.updated')
-  .withProperties(['accountUpdated'])
-  .addToQueue()
-  .andProcess(function (data) {
-    // This callback will be executed as part of the queue process
-    // console.log(data.accountUpdated)
-  })
+	.eventReceived('account.updated')
+	.withProperties(['accountUpdated'])
+	.addToQueue()
+	.andProcess(function (data) {
+		// This callback will be executed as part of the queue process
+		// console.log(data.accountUpdated)
+	})
+
+on
+	.eventReceived('account.updated')
+	.withProperties(['accountUpdated'])
+	.addToQueue()
+	.andDispatchAs('newEventName')
 
 on
 	.requestReceived('someRequest')
 	.withProperties(['userId'])
-	.respond(actions.doSomethingAndReturnToRequester)
+	.respond()
+	.afterExecuting(actions.doSomethingAndReturnToRequester)
 
-on.listen(options)
-on.initQueue(someQueueName)
+on.init()
 
 ```
 
@@ -69,8 +171,23 @@ The module has a dependency on a MQ class that handles the communication with MQ
 
 ```
 connect()
+disconnect()
 emit(eventName, data)
 dispatchToQueue(queueName, data)
-listen(arrayOfTopicsToListenOn)
+listenForTopics(arrayOfTopicsToListenOn)
 consumeFromQueue(arrayOfTasksToConsume)
+sendRequest(requestName, data)
+listenAndAnswerRequest(requestName, callback)
 ```
+
+# License
+
+(The MIT License)
+
+Copyright &copy; 2016 Luis Elizondo <lelizondo@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the 'Software'), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

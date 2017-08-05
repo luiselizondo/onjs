@@ -1,0 +1,10 @@
+#!/bin/bash
+
+RABBIT_CONTAINER_NAME=onjs_rabbit_test
+REDIS_CONTAINER_NAME=onjs_redis_test
+
+docker stop ${RABBIT_CONTAINER_NAME}
+docker stop ${REDIS_CONTAINER_NAME}
+
+docker rm ${RABBIT_CONTAINER_NAME}
+docker rm ${REDIS_CONTAINER_NAME}

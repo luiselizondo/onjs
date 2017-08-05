@@ -1,10 +1,10 @@
 {
 	"name": "onjs",
-	"version": "0.0.8",
+	"version": "0.1.0",
 	"description": "On.js is an event library based on RabbitMQ that helps you control events on a microservices arquitecture",
 	"main": "index.js",
 	"scripts": {
-		"test": "mocha test/*.js"
+		"test": "mocha tests/tests/*.js"
 	},
 	"repository": {
 		"type": "git",
@@ -19,7 +19,9 @@
 		"url": "https://github.com/luiselizondo/onjs/issues"
 	},
 	"homepage": "https://github.com/luiselizondo/onjs#readme",
-	"devDependencies": {},
+	"devDependencies": {
+		"rabbitmq-lib": "^1.0.6"
+	},
 	"dependencies": {
 		"amqplib": "^0.5.1",
 		"bull": "^3.0.0-rc.4",
