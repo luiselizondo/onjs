@@ -1,6 +1,6 @@
 {
 	"name": "onjs",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "On.js is an event library based on RabbitMQ that helps you control events on a microservices arquitecture",
 	"main": "index.js",
 	"scripts": {
