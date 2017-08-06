@@ -19,8 +19,8 @@ function createRedisContainer() {
   echo $id
 }
 
-function startRabbitContainer() {
-	id=$(docker start ${RABBIT_CONTAINER_NAME})
+function startRedisContainer() {
+	id=$(docker start ${REDIS_CONTAINER_NAME})
   echo $id
 }
 
