@@ -134,7 +134,7 @@ on
 	.withProperties(['body', 'account'])
 	.do(function (data) {
 		// Do something with data or dispatch it to the queue
-		
+
 		this.context.mq.dispatchToQueue('someOtherEvent', {
 			contentId: data.body.id,
 			userId: data.account.id
@@ -179,6 +179,14 @@ consumeFromQueue(arrayOfTasksToConsume)
 sendRequest(requestName, data)
 listenAndAnswerRequest(requestName, callback)
 ```
+
+# Debugging
+To debug, add the .debug() method anywhere in an event and watch the console
+
+# Troubleshooting
+One of the most common errors is to trigger a topic event and expect an event on a queue or any problem related to moving events between topics and queues.
+
+So if you receive an event that is a topic event, and you want to send that event to a queue, you'll need to do it manually. To do this, execute a callback and inside call this.context.mq.emit() or this.context.mq.dispatchToQueue() depending on what you want.
 
 # License
 
