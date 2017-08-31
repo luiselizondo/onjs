@@ -21,8 +21,8 @@ describe('On.js', function () {
   describe('Topics registration', function () {
     it('Should get an event given the index', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -35,8 +35,8 @@ describe('On.js', function () {
 
     it('Should register a topic event listener with a callback', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -56,8 +56,8 @@ describe('On.js', function () {
 
     it('Should throw an error when not registering a callback', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on.eventReceived('testEvent').do()
@@ -71,8 +71,8 @@ describe('On.js', function () {
 
     it('Should throw an error if the callback registered is not a Function', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on.eventReceived('testEvent').do(true)
@@ -85,8 +85,8 @@ describe('On.js', function () {
 
     it('Should throw an error if the event was not registered first', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on.do(nullMe)
@@ -101,8 +101,8 @@ describe('On.js', function () {
   describe('Double events', function () {
     it('Should register different event names with different callbacks', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -125,8 +125,8 @@ describe('On.js', function () {
 
     it('Should register different event names with the same callback', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -149,8 +149,8 @@ describe('On.js', function () {
 
     it('Should register the same event name with different callbacks', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -175,8 +175,8 @@ describe('On.js', function () {
   describe('Properties', function () {
     it('Should register an event with properties', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -197,8 +197,8 @@ describe('On.js', function () {
 
     it('Should throw an error when the event hasn\'t been registered first', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on
@@ -212,8 +212,8 @@ describe('On.js', function () {
 
     it('Should throw an error if the properties is not an array', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on
@@ -230,8 +230,8 @@ describe('On.js', function () {
   describe('Validate properties', function () {
     it("Should pass validation of properties", function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -250,8 +250,8 @@ describe('On.js', function () {
 
     it("Should fail validation of properties", function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -271,8 +271,8 @@ describe('On.js', function () {
   describe('Queues', function () {
     it('Should register a queue event listener', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -290,8 +290,8 @@ describe('On.js', function () {
 
     it('Should register a queue event listener with a callback', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -312,8 +312,8 @@ describe('On.js', function () {
 
     it('Should register a topic and a queue event with the same name', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -357,8 +357,8 @@ describe('On.js', function () {
 
     it("Should create a dispatchable event", function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -375,8 +375,8 @@ describe('On.js', function () {
 
     it("Should throw an error if a dispatchable event hasn't been registered first", function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on
@@ -390,8 +390,8 @@ describe('On.js', function () {
 
     it("Should throw an error if a dispatchable event is registered on a topic", function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on
@@ -408,8 +408,8 @@ describe('On.js', function () {
   describe('RPC', function () {
     it('Should fail to register an RPC event if the event hasn\'t been registered before', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       try {
         on
@@ -423,8 +423,8 @@ describe('On.js', function () {
 
     it('Should register an RPC event listener', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -442,8 +442,8 @@ describe('On.js', function () {
 
     it('Should register an RPC event listener with a callback', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')
@@ -464,8 +464,8 @@ describe('On.js', function () {
 
     it('Should register an RPC event, a topic event and a queue event', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       on
       .eventReceived('testEvent')

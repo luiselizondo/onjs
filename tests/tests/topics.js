@@ -19,8 +19,8 @@ describe('Topics', function () {
   describe('Topic', function () {
     it('Should execute a topic event', function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       function execution(incomingData) {
         incomingData.should.have.property('name', 'Flash')
@@ -36,7 +36,7 @@ describe('Topics', function () {
       on.init()
 
       waitAndExecute(1000, function () {
-        mq.emit('topicEvent', {
+        mq.publish('topicEvent', {
           name: 'Flash',
           superpower: 'Run fast'
         })
@@ -45,8 +45,8 @@ describe('Topics', function () {
 
     it("Should fail to execute because validation", function (done) {
       var eventsInstance = new Events();
-      var mq = new MQ(eventsInstance, config)
-      var on = new On(mq, eventsInstance, {})
+      var mq = new MQ(config)
+      var on = new On(mq, {})
 
       function execution(incomingData) {
         return done()
@@ -60,7 +60,7 @@ describe('Topics', function () {
       on.init()
 
       waitAndExecute(1000, function () {
-        mq.emit('topicEvent', {
+        mq.publish('topicEvent', {
           name: 'Flash'
         })
 

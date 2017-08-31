@@ -89,7 +89,7 @@ var options = {
 	}
 }
 
-var on = new On(mqInstance, eventsInstance, options)
+var on = new On(mqInstance, options)
 on.init()
 ```
 
@@ -116,11 +116,8 @@ var mqOptions = {
 	url: 'amqp://rabbitmq:rabbitmq@localhost:35672/'
 }
 
-var EventEmitter = require('events');
-class Events extends EventEmitter {}
-var eventsInstance = new Events();
-var mq = new MQ(eventsInstance, mqOptions)
-var on = new On(mq, eventsInstance, options)
+var mq = new MQ(mqOptions)
+var on = new On(mq, options)
 
 on
 	.eventReceived('content.updated')
@@ -172,10 +169,11 @@ The module has a dependency on a MQ class that handles the communication with MQ
 ```
 connect()
 disconnect()
-emit(eventName, data)
+publish(eventName, data)
+publishToTopic(eventName, data)
 dispatchToQueue(queueName, data)
 listenForTopics(arrayOfTopicsToListenOn)
-consumeFromQueue(arrayOfTasksToConsume)
+consumeFromQueues(arrayOfTasksToConsume)
 sendRequest(requestName, data)
 listenAndAnswerRequest(requestName, callback)
 ```
@@ -186,7 +184,9 @@ To debug, add the .debug() method anywhere in an event and watch the console
 # Troubleshooting
 One of the most common errors is to trigger a topic event and expect an event on a queue or any problem related to moving events between topics and queues.
 
-So if you receive an event that is a topic event, and you want to send that event to a queue, you'll need to do it manually. To do this, execute a callback and inside call this.context.mq.emit() or this.context.mq.dispatchToQueue() depending on what you want.
+So if you receive an event that is a topic event, and you want to send that event to a queue, you'll need to do it manually. To do this, execute a callback and inside call this.context.mq.publish() or this.context.mq.dispatchToQueue() depending on what you want.
+
+You can always bypass on.js and use the MQ instance as an EventEmitter since it inherits from the Node.js EventEmitter class. Just use mq.emit() or mq.on('someEvent')
 
 # License
 

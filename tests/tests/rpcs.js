@@ -20,8 +20,8 @@ describe('RPC', function () {
 
   it('Should execute a queue event', function (done) {
     var eventsInstance = new Events();
-    var mq = new MQ(eventsInstance, config)
-    var on = new On(mq, eventsInstance, {
+    var mq = new MQ(config)
+    var on = new On(mq, {
       redis: {
         port: REDIS_PORT,
         host: '127.0.0.1'
