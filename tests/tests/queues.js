@@ -21,12 +21,7 @@ describe('Queue', function () {
   it('Should execute a queue event', function (done) {
     var eventsInstance = new Events();
     var mq = new MQ(config)
-    var on = new On(mq, {
-      redis: {
-        port: REDIS_PORT,
-        host: '127.0.0.1'
-      }
-    })
+    var on = new On(mq, {})
 
     function execution(incomingData) {
       incomingData.should.have.property('name', 'Superman')
@@ -35,9 +30,8 @@ describe('Queue', function () {
     }
 
     on
-    .eventReceived('testQueue')
+    .taskReceived('testQueue')
     .withProperties(['name', 'superpower'])
-    .addToQueue()
     .andProcess(execution)
 
     on.init()
@@ -50,7 +44,7 @@ describe('Queue', function () {
     })
   });
 
-  it("Should redispatch the event as a new event", function (done) {
+  it("Should redispatch the event as a new queue", function (done) {
     var eventsInstance = new Events();
     var mq = new MQ(config)
     var on = new On(mq, {
@@ -69,19 +63,17 @@ describe('Queue', function () {
     on
     .eventReceived('dispatchableQueue')
     .withProperties(['name', 'superpower'])
-    .addToQueue()
     .andDispatchAs('newTestQueue')
 
     on
-    .eventReceived('newTestQueue')
+    .taskReceived('newTestQueue')
     .withProperties(['name', 'superpower'])
-    .addToQueue()
     .andProcess(execution)
 
     on.init()
 
     waitAndExecute(2000, function () {
-      mq.dispatchToQueue('dispatchableQueue', {
+      mq.publish('dispatchableQueue', {
         name: 'Wonder Woman',
         superpower: 'Fly'
       })

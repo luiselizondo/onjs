@@ -3,6 +3,7 @@ var On = require('../../index')
 var EventEmitter = require('events');
 class Events extends EventEmitter {}
 var MQ = require('rabbitmq-lib')
+var REDIS_PORT = 19379
 
 function waitAndExecute(waitTime, callback) {
   setTimeout(callback, waitTime)
@@ -20,7 +21,12 @@ describe('Topics', function () {
     it('Should execute a topic event', function (done) {
       var eventsInstance = new Events();
       var mq = new MQ(config)
-      var on = new On(mq, {})
+      var on = new On(mq, {
+        redis: {
+          port: REDIS_PORT,
+          host: '127.0.0.1'
+        }
+      })
 
       function execution(incomingData) {
         incomingData.should.have.property('name', 'Flash')
@@ -46,7 +52,12 @@ describe('Topics', function () {
     it("Should fail to execute because validation", function (done) {
       var eventsInstance = new Events();
       var mq = new MQ(config)
-      var on = new On(mq, {})
+      var on = new On(mq, {
+        redis: {
+          port: REDIS_PORT,
+          host: '127.0.0.1'
+        }
+      })
 
       function execution(incomingData) {
         return done()

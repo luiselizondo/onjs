@@ -18,6 +18,14 @@ The pattern of listening to a topic exchange is described at https://www.rabbitm
 
 To achieve this on On.js you have to register the event, declare the properties you're expecting to receive so validation executes and then execute a callback
 
+On.js uses it's own local Redis based queue to order to avoid duplicates if multiple services listen to the same event
+
+On.js provides two options for working with topics. Processing and Dispatching
+
+Processing means that the task will be added to the queue and processed as soon as the queue determines that it can start processing it.
+
+Dispatching means that the task will be added to the queue but instead of being processed, it will be sent to MQ with another name.
+
 ```
 on
 	.eventReceived(eventName: string)
@@ -26,25 +34,12 @@ on
 
 ```
 
-### Queues
-
-The pattern of listening to work queues is described at https://www.rabbitmq.com/tutorials/tutorial-two-javascript.html
-
-On.js uses it's own local Redis based queue to order requests on this queue. Although RabbitMQ (the only supported system) is very good with queues it does not prevent duplicates so a local queue is created to avoid duplicates.
-
-On.js provides two options for working with queues. Processing and Dispatching
-
-Processing means that the task will be added to the queue and processed as soon as the queue determines that it can start processing it.
-
-Dispatching means that the task will be added to the queue but instead of being processed, it will be sent to MQ with another name.
-
 #### Processing
 
 ```
 on
 	.eventReceived(eventName: string)
 	.withProperties(properties: array)
-	.addToQueue()
 	.andProcess(callback: function)
 ```
 
@@ -56,11 +51,23 @@ Any event received with the name registered on ```eventReceived``` will be added
 on
 	.eventReceived(eventName: string)
 	.withProperties(properties: array)
-	.addToQueue()
 	.andDispatchAs(eventName: string)
 ```
 
 Any event received with the name registered on ```eventReceived``` will be added to the queue and dispatched to MQ with the same data as received but with the name defined on the method ```andDispatchAs```
+
+### Queues
+
+The pattern of listening to work queues is described at https://www.rabbitmq.com/tutorials/tutorial-two-javascript.html
+
+This are tasks that will be executed by a queue
+
+```
+on
+	.taskReceived(eventName: string)
+	.withProperties(properties: array)
+	.do(eventName: string)
+```
 
 ### RPC Requests
 The pattern of listening to RPC requests described at https://www.rabbitmq.com/tutorials/tutorial-six-javascript.html
@@ -141,7 +148,6 @@ on
 on
 	.eventReceived('account.updated')
 	.withProperties(['accountUpdated'])
-	.addToQueue()
 	.andProcess(function (data) {
 		// This callback will be executed as part of the queue process
 		// console.log(data.accountUpdated)
@@ -150,7 +156,6 @@ on
 on
 	.eventReceived('account.updated')
 	.withProperties(['accountUpdated'])
-	.addToQueue()
 	.andDispatchAs('newEventName')
 
 on
@@ -161,6 +166,25 @@ on
 
 on.init()
 
+```
+
+# Debugging and Logging
+Running 
+
+```
+on.debug()
+```
+
+will enable all logging. If you only want to enable one particular event to have logging, you can do it:
+
+```
+on
+	.requestReceived('someRequest')
+	.withProperties(['userId'])
+	.respond()
+	.afterExecuting(actions.doSomethingAndReturnToRequester)
+	.and()
+	.log()
 ```
 
 # MQ Dependency
@@ -177,9 +201,6 @@ consumeFromQueues(arrayOfTasksToConsume)
 sendRequest(requestName, data)
 listenAndAnswerRequest(requestName, callback)
 ```
-
-# Debugging
-To debug, add the .debug() method anywhere in an event and watch the console
 
 # Troubleshooting
 One of the most common errors is to trigger a topic event and expect an event on a queue or any problem related to moving events between topics and queues.

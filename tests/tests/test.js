@@ -3,6 +3,7 @@ var On = require('../../index')
 var EventEmitter = require('events');
 class Events extends EventEmitter {}
 var MQ = require('rabbitmq-lib')
+var REDIS_PORT = 19379
 
 function nullMe(data) {
   return null
@@ -166,8 +167,10 @@ describe('On.js', function () {
       events.should.have.lengthOf(2);
       events[0].should.have.property('callback', nullMe)
       events[0].should.have.property('eventName', 'testEvent')
+      events[0].should.have.property('type', 'topic')
       events[1].should.have.property('callback', nullMeToo)
       events[1].should.have.property('eventName', 'testEvent')
+      events[1].should.have.property('type', 'topic')
       done()
     })
   })
@@ -275,8 +278,7 @@ describe('On.js', function () {
       var on = new On(mq, {})
 
       on
-      .eventReceived('testEvent')
-      .addToQueue()
+      .taskReceived('testEvent')
 
       var eventsRegistered = on._getEvents('queue')
 
@@ -294,8 +296,7 @@ describe('On.js', function () {
       var on = new On(mq, {})
 
       on
-      .eventReceived('testEvent')
-      .addToQueue()
+      .taskReceived('testEvent')
       .andProcess(nullMe)
 
       var eventsRegistered = on._getEvents('queue')
@@ -320,8 +321,7 @@ describe('On.js', function () {
       .do(nullMe)
 
       on
-      .eventReceived('testEvent')
-      .addToQueue()
+      .taskReceived('testEvent')
       .andProcess(nullMeToo)
 
       on
@@ -362,14 +362,13 @@ describe('On.js', function () {
 
       on
       .eventReceived('testEvent')
-      .addToQueue()
       .andDispatchAs('newEvent')
 
-      var queues = on._getEvents('queue')
+      var topics = on._getEvents('topic')
 
-      queues[0].should.have.property('eventName', 'testEvent');
-      queues[0].should.have.property('type', 'queue');
-      queues[0].should.have.property('dispatchAs', 'newEvent')
+      topics[0].should.have.property('eventName', 'testEvent');
+      topics[0].should.have.property('type', 'topic');
+      topics[0].should.have.property('dispatchAs', 'newEvent')
       done()
     })
 
@@ -388,18 +387,18 @@ describe('On.js', function () {
       }
     })
 
-    it("Should throw an error if a dispatchable event is registered on a topic", function (done) {
+    it("Should throw an error if a dispatchable event is registered as a task", function (done) {
       var eventsInstance = new Events();
       var mq = new MQ(config)
       var on = new On(mq, {})
 
       try {
         on
-        .eventReceived('testEvent')
+        .taskReceived('testEvent')
         .andDispatchAs('newEvent')
       }
       catch (error) {
-        error.should.have.property('message', 'Dispatchable events should be registered as queues. Execute the method addToQueue before')
+        error.should.have.property('message', 'Dispatchable events should be registered as topics. Execute the method onEventReceived instead of onTaskReceived on the event testEvent')
         done()
       }
     })
@@ -472,8 +471,7 @@ describe('On.js', function () {
       .do(nullMe)
 
       on
-      .eventReceived('testEvent')
-      .addToQueue()
+      .taskReceived('testEvent')
       .andProcess(nullMeToo)
 
       on
