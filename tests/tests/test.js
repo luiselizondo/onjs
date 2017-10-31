@@ -49,8 +49,8 @@ describe('On.js', function () {
       eventsRegistered.should.have.lengthOf(1);
       eventsRegistered[0].should.have.property('eventName', 'testEvent');
       eventsRegistered[0].should.have.property('type', 'topic');
-      eventsRegistered[0].should.have.property('callback')
-      eventsRegistered[0].should.have.property('callback', nullMe)
+      eventsRegistered[0].should.have.property('actions')
+      eventsRegistered[0].actions[0].should.equal(nullMe)
 
       done()
     })
@@ -67,7 +67,6 @@ describe('On.js', function () {
         error.should.have.property('message', 'A callback needs to be registered first calling the do method or the registerCallback method')
         done()
       }
-
     })
 
     it('Should throw an error if the callback registered is not a Function', function (done) {
@@ -117,10 +116,15 @@ describe('On.js', function () {
 
       events.should.be.an.Array;
       events.should.have.lengthOf(2);
-      events[0].should.have.property('callback', nullMe)
+      events[0].should.have.property('actions')
       events[0].should.have.property('eventName', 'testEvent')
-      events[1].should.have.property('callback', nullMeToo)
+      events[0].actions.should.have.lengthOf(1)
+      events[0].actions[0].should.equal(nullMe)
+
+      events[1].should.have.property('actions')
       events[1].should.have.property('eventName', 'testEvent2')
+      events[1].actions.should.have.lengthOf(1)
+      events[1].actions[0].should.equal(nullMeToo)
       done()
     });
 
@@ -141,10 +145,11 @@ describe('On.js', function () {
 
       events.should.be.an.Array;
       events.should.have.lengthOf(2);
-      events[0].should.have.property('callback', nullMe)
       events[0].should.have.property('eventName', 'testEvent')
-      events[1].should.have.property('callback', nullMe)
       events[1].should.have.property('eventName', 'testEvent2')
+      
+      events[0].actions[0].should.equal(nullMe)
+      events[1].actions[0].should.equal(nullMe)
       done()
     })
 
@@ -164,13 +169,13 @@ describe('On.js', function () {
       var events = on._getEvents('topic')
 
       events.should.be.an.Array;
-      events.should.have.lengthOf(2);
-      events[0].should.have.property('callback', nullMe)
+      events.should.have.lengthOf(1);
+      events[0].should.have.property('actions')
+      events[0].actions.should.have.lengthOf(2)
+      events[0].actions[0].should.equal(nullMe)
+      events[0].actions[1].should.equal(nullMeToo)
       events[0].should.have.property('eventName', 'testEvent')
       events[0].should.have.property('type', 'topic')
-      events[1].should.have.property('callback', nullMeToo)
-      events[1].should.have.property('eventName', 'testEvent')
-      events[1].should.have.property('type', 'topic')
       done()
     })
   })
@@ -271,6 +276,177 @@ describe('On.js', function () {
     })
   })
 
+  describe('Event types', function () {
+    it('Should detect that an event exists of type topic', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.eventReceived('testEvent')
+      on.taskReceived('testEvent1')
+      on.eventReceived('testEvent')
+
+      var events = on._getEvents('topic')
+      events.should.have.lengthOf(1)
+      events[0].should.have.property('eventName', 'testEvent')
+      done()
+    })
+
+    it('Should detect that an event exists of type task', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.eventReceived('testEvent')
+      on.taskReceived('testEvent1')
+      on.eventReceived('testEvent')
+
+      var events = on._getEvents('queue')
+      events.should.have.lengthOf(1)
+      events[0].should.have.property('eventName', 'testEvent1')
+      done()
+    })
+
+    it('Should detect that an event exists of type task when two tasks are name equally', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.eventReceived('testEvent')
+      on.eventReceived('testEvent')
+
+      on.taskReceived('testEvent1')
+      on.taskReceived('testEvent1')
+
+      var events = on._getEvents('queue')
+      events.should.have.lengthOf(1)
+      events[0].should.have.property('eventName', 'testEvent1')
+      events[0].should.have.property('type', 'queue')
+      done()
+    })
+
+    it('Should detect that an event exists with the same name but different type', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.eventReceived('testEvent')
+      on.taskReceived('testEvent')
+
+      var queues = on._getEvents('queue')
+      queues.should.have.lengthOf(1)
+      queues[0].should.have.property('eventName', 'testEvent')
+      queues[0].should.have.property('type', 'queue')
+
+      on.eventReceived('testEvent1')
+      on.taskReceived('testEvent1')
+
+      var topics = on._getEvents('topic')
+      topics.should.have.lengthOf(2)
+      topics[0].should.have.property('eventName', 'testEvent')
+      topics[1].should.have.property('eventName', 'testEvent1')
+      topics[0].should.have.property('type', 'topic')
+      done()
+    })
+
+    it('Should detect that an event of type topic exist', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.eventReceived('testEvent')
+
+      var eventExists = on._eventExists('testEvent', 'topic')
+      eventExists.should.be.true
+      done()
+    })
+
+    it('Should detect that an event of type queue exists', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.taskReceived('testEvent')
+
+      var eventExists = on._eventExists('testEvent', 'queue')
+      eventExists.should.be.true
+      done()
+    })
+
+    it('Should detect that an event of type rpc exists', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.requestReceived('testEvent')
+
+      var eventExists = on._eventExists('testEvent', 'rpc')
+      eventExists.should.be.true
+      done()
+    })
+
+    it('Should detect that an event of type topic exists when another event of type queue exists with the same name', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.taskReceived('testEvent')
+      on.eventReceived('testEvent')
+
+      var eventExists = on._eventExists('testEvent', 'queue')
+      eventExists.should.be.true
+      done()
+    })
+
+    it('Should detect than an event of type topic does not exist when another event of type queue exists with the same name', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.taskReceived('testEvent')
+      on.eventReceived('testEvent')
+
+      var eventExists = on._eventExists('testEvent', 'queue')
+      eventExists.should.be.true
+      done()
+    })
+
+    it('Should detect that an event of type queue exists when another event of type topic exists with the same name', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.taskReceived('testEvent')
+      on.eventReceived('testEvent')
+
+      var eventExists = on._eventExists('testEvent', 'topic')
+      eventExists.should.be.true
+      done()
+    })
+
+    it('Should add tasks and events with the same name', function (done) {
+      var eventsInstance = new Events();
+      var mq = new MQ(config)
+      var on = new On(mq, {})
+
+      on.taskReceived('testEvent')
+      on.eventReceived('testEvent')
+      on.taskReceived('testEvent')
+      on.eventReceived('testEvent')
+
+      var topics = on._getEvents('topic')
+      topics.should.have.lengthOf(1)
+      topics[0].should.have.property('eventName', 'testEvent')
+      topics[0].should.have.property('type', 'topic')
+
+      var queues = on._getEvents('queue')
+      queues.should.have.lengthOf(1)
+      queues[0].should.have.property('eventName', 'testEvent')
+      queues[0].should.have.property('type', 'queue')
+      done()
+    })
+  })
+
   describe('Queues', function () {
     it('Should register a queue event listener', function (done) {
       var eventsInstance = new Events();
@@ -305,9 +481,10 @@ describe('On.js', function () {
       eventsRegistered.should.have.lengthOf(1);
       eventsRegistered[0].should.have.property('eventName', 'testEvent');
       eventsRegistered[0].should.have.property('type', 'queue');
-      eventsRegistered[0].should.have.property('callback')
-      eventsRegistered[0].should.have.property('callback', nullMe)
-
+      eventsRegistered[0].should.have.property('actions')
+      eventsRegistered[0].actions.should.have.lengthOf(1)
+      eventsRegistered[0].actions[0].should.equal(nullMe)
+      
       done()
     })
 
@@ -332,25 +509,23 @@ describe('On.js', function () {
       var queues = on._getEvents('queue')
 
       topics.should.be.an.Array;
-      topics.should.have.lengthOf(2);
+      topics.should.have.lengthOf(1);
 
       queues.should.be.an.Array;
       queues.should.have.lengthOf(1);
 
       topics[0].should.have.property('eventName', 'testEvent');
       topics[0].should.have.property('type', 'topic');
-      topics[0].should.have.property('callback')
-      topics[0].should.have.property('callback', nullMe)
-
-      topics[1].should.have.property('eventName', 'testEvent');
-      topics[1].should.have.property('type', 'topic');
-      topics[1].should.have.property('callback')
-      topics[1].should.have.property('callback', nullMeToo)
+      topics[0].should.have.property('actions')
+      topics[0].actions.should.have.lengthOf(2)
+      topics[0].actions[0].should.equal(nullMe)
+      topics[0].actions[1].should.equal(nullMeToo)
 
       queues[0].should.have.property('eventName', 'testEvent');
       queues[0].should.have.property('type', 'queue');
-      queues[0].should.have.property('callback')
-      queues[0].should.have.property('callback', nullMeToo)
+      queues[0].should.have.property('actions')
+      queues[0].actions.should.have.lengthOf(1)
+      queues[0].actions[0].should.equal(nullMeToo)
 
       done()
     })
@@ -368,7 +543,9 @@ describe('On.js', function () {
 
       topics[0].should.have.property('eventName', 'testEvent');
       topics[0].should.have.property('type', 'topic');
-      topics[0].should.have.property('dispatchAs', 'newEvent')
+      topics[0].should.have.property('dispatchAs')
+      topics[0].dispatchAs.should.have.lengthOf(1)
+      topics[0].dispatchAs[0].should.equal('newEvent')
       done()
     })
 
@@ -382,7 +559,7 @@ describe('On.js', function () {
         .andDispatchAs('newEvent')
       }
       catch (error) {
-        error.should.have.property('message', 'The event hasn\'t been registered first')
+        error.should.have.property('message', 'The event null hasn\'t been registered first')
         done()
       }
     })
@@ -426,7 +603,7 @@ describe('On.js', function () {
       var on = new On(mq, {})
 
       on
-      .eventReceived('testEvent')
+      .requestReceived('testEvent')
       .respond()
 
       var eventsRegistered = on._getEvents('rpc')
@@ -445,7 +622,7 @@ describe('On.js', function () {
       var on = new On(mq, {})
 
       on
-      .eventReceived('testEvent')
+      .requestReceived('testEvent')
       .respond()
       .afterExecuting(nullMe)
 
@@ -455,8 +632,9 @@ describe('On.js', function () {
       eventsRegistered.should.have.lengthOf(1);
       eventsRegistered[0].should.have.property('eventName', 'testEvent');
       eventsRegistered[0].should.have.property('type', 'rpc');
-      eventsRegistered[0].should.have.property('callback')
-      eventsRegistered[0].should.have.property('callback', nullMe)
+      eventsRegistered[0].should.have.property('actions')
+      eventsRegistered[0].actions.should.have.lengthOf(1)
+      eventsRegistered[0].actions[0].should.equal(nullMe)
 
       done()
     });
@@ -479,7 +657,7 @@ describe('On.js', function () {
       .do(nullMeToo)
 
       on
-      .eventReceived('testEvent')
+      .requestReceived('testEvent')
       .respond()
       .afterExecuting(nullMe)
 
@@ -488,7 +666,7 @@ describe('On.js', function () {
       var rpcs = on._getEvents('rpc')
 
       topics.should.be.an.Array;
-      topics.should.have.lengthOf(2);
+      topics.should.have.lengthOf(1);
 
       queues.should.be.an.Array;
       queues.should.have.lengthOf(1);
@@ -498,23 +676,22 @@ describe('On.js', function () {
 
       topics[0].should.have.property('eventName', 'testEvent');
       topics[0].should.have.property('type', 'topic');
-      topics[0].should.have.property('callback')
-      topics[0].should.have.property('callback', nullMe)
-
-      topics[1].should.have.property('eventName', 'testEvent');
-      topics[1].should.have.property('type', 'topic');
-      topics[1].should.have.property('callback')
-      topics[1].should.have.property('callback', nullMeToo)
+      topics[0].should.have.property('actions')
+      topics[0].actions.should.have.lengthOf(2)
+      topics[0].actions[0].should.equal(nullMe)
+      topics[0].actions[1].should.equal(nullMeToo)
 
       queues[0].should.have.property('eventName', 'testEvent');
       queues[0].should.have.property('type', 'queue');
-      queues[0].should.have.property('callback')
-      queues[0].should.have.property('callback', nullMeToo)
+      queues[0].should.have.property('actions')
+      queues[0].actions.should.have.lengthOf(1)
+      queues[0].actions[0].should.equal(nullMeToo)
 
       rpcs[0].should.have.property('eventName', 'testEvent');
       rpcs[0].should.have.property('type', 'rpc');
-      rpcs[0].should.have.property('callback')
-      rpcs[0].should.have.property('callback', nullMe)
+      rpcs[0].should.have.property('actions')
+      rpcs[0].actions.should.have.lengthOf(1)
+      rpcs[0].actions[0].should.equal(nullMe)
 
       done()
     })

@@ -40,7 +40,7 @@ describe('RPC', function () {
     }
 
     on
-    .eventReceived('getSuperhero')
+    .requestReceived('getSuperhero')
     .withProperties(['name'])
     .respond()
     .afterExecuting(execution)
