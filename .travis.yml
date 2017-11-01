@@ -14,4 +14,4 @@ script:
 node_js:
   - "7"
   - "6"
-  - "latest"
+  - "node"
