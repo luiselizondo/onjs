@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/luiselizondo/onjs#readme",
   "devDependencies": {
+    "mocha": "^4.0.1",
     "rabbitmq-lib": "^1.2.2",
     "should": "^13.1.3"
   },
