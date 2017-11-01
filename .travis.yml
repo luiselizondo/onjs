@@ -11,3 +11,7 @@ before_install:
 script:
   - npm test
 
+node_js:
+  - "7"
+  - "6"
+  - "latest"
