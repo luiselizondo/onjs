@@ -1,0 +1,11 @@
+sudo: required
+
+services:
+  - docker
+
+before_install:
+- bin/prepare-test-environment
+
+script:
+- npm test
+
