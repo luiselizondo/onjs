@@ -3,9 +3,11 @@ sudo: required
 services:
   - docker
 
+language: node_js
+
 before_install:
-- bin/prepare-test-environment
+  - bin/prepare-test-environment
 
 script:
-- npm test
+  - npm test
 
