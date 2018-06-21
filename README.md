@@ -1,6 +1,8 @@
 # On.js
 
-Helper utility to handle and keep control of events on a microservices arquitecture handled by MQ.
+Helper utility to handle and keep control of events on RabbitMQ.
+
+Version 2 deprecates serveral APIs
 
 # API
 
@@ -93,10 +95,17 @@ var options = {
 	redis: {
 		host: REDIS_HOST,
 		port: REDIS_PORT
-	}
+	},
+	mq: {
+		url: RABBITMQ_URL,
+  	exchange_name: EXCHANGE_NAME
+	},
+	logger: new Logger()
 }
 
-var on = new On(mqInstance, options)
+Logger must be an instance of your logger, the logger must have the following methods 'info', 'error' and 'warning'
+
+var on = new On(options)
 on.init()
 ```
 
@@ -175,7 +184,7 @@ Running
 on.debug()
 ```
 
-will enable all logging. If you only want to enable one particular event to have logging, you can do it:
+will enable all logging. If you only want to enable one particular event to have logging, you can do it as well by calling the .log method on a particular event:
 
 ```
 on

@@ -2,81 +2,79 @@ var should = require('should')
 var On = require('../../index')
 var EventEmitter = require('events');
 class Events extends EventEmitter {}
-var MQ = require('rabbitmq-lib')
+var MQ = require('rabbitmq-lib').MQ
+var Topic = require('rabbitmq-lib').Topic
 var REDIS_PORT = 19379
-
-function waitAndExecute(waitTime, callback) {
-  setTimeout(callback, waitTime)
-}
 
 describe('Topics', function () {
   this.timeout(5000)
 
   var config = {
-    exchange_name: 'onjs_test',
-    url: 'amqp://rabbitmq:rabbitmq@localhost:35672/'
+    mq: {
+      exchange_name: 'onjs_test',
+      url: 'amqp://rabbitmq:rabbitmq@localhost:35672/',
+    },
+    redis: {
+      port: REDIS_PORT,
+      host: '127.0.0.1'
+    }
   }
 
-  describe('Topic', function () {
-    it('Should execute a topic event', function (done) {
-      var eventsInstance = new Events();
-      var mq = new MQ(config)
-      var on = new On(mq, {
-        redis: {
-          port: REDIS_PORT,
-          host: '127.0.0.1'
-        }
-      })
+  var mq1 = new MQ(config.mq)
 
-      function execution(incomingData) {
-        incomingData.should.have.property('name', 'Flash')
-        incomingData.should.have.property('superpower', 'Run fast')
-        done()
-      }
+  var publisher = new Topic(config.mq.exchange_name)
+  var on = new On(config)
 
-      on
-      .eventReceived('topicEvent')
-      .withProperties(['name', 'superpower'])
-      .do(execution)
+  before(async function () {
+    await mq1.connect()
+    
+    var channelConsumer2 = await mq1.createChannel()
+    publisher.setChannel(channelConsumer2)
+    return
+  })
 
-      on.init()
+  after(async function () {
+    return await mq1.disconnect()
+  })
 
-      waitAndExecute(1000, function () {
-        mq.publish('topicEvent', {
-          name: 'Flash',
-          superpower: 'Run fast'
-        })
-      })
-    });
+  afterEach(async function () {
+    return await on.tearDown()
+  })
 
-    it("Should fail to execute because validation", function (done) {
-      var eventsInstance = new Events();
-      var mq = new MQ(config)
-      var on = new On(mq, {
-        redis: {
-          port: REDIS_PORT,
-          host: '127.0.0.1'
-        }
-      })
+  it('Should execute a topic event', async function () {
+    function execution(incomingData) {
+      console.log('Incoming', incomingData)
+      incomingData.should.have.property('name', 'Flash')
+      incomingData.should.have.property('superpower', 'Run fast')
+    }
 
-      function execution(incomingData) {
-        return done()
-      }
+    on
+    .eventReceived('topicEvent')
+    .withProperties(['name', 'superpower'])
+    .do(execution)
 
-      on
-      .eventReceived('topicEvent')
-      .withProperties(['name', 'superpower'])
-      .do(execution)
+    await on.init()
 
-      on.init()
+    await publisher.publish('topicEvent', {
+      name: 'Flash',
+      superpower: 'Run fast'
+    })
+  });
 
-      waitAndExecute(1000, function () {
-        mq.publish('topicEvent', {
-          name: 'Flash'
-        })
+  it("Should fail to execute because validation", async function () {
+    function execution(incomingData) {
+      console.log('Should not execute')
+    }
 
-        done()
-      })
+    on
+    .eventReceived('topicEvent2')
+    .withProperties(['name', 'superpower'])
+    .do(execution)
+
+    await on.init()
+
+    await publisher.publish('topicEvent2', {
+      name: 'Flash'
     })
   })
 })
