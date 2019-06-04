@@ -70,6 +70,19 @@ on
 	.withProperties(properties: array)
 	.do(eventName: string)
 ```
+### Delayed Queues
+
+The pattern of listening to work queues is described at https://www.rabbitmq.com/tutorials/tutorial-two-javascript.html
+This type of queues require the rabbitmq-delayed-message-exchange plugin
+
+The task will arrive at the queue with a set delay
+
+```
+on
+	.taskReceived(eventName: string, options: { isDelayed: boolean})
+	.withProperties(properties: array)
+	.do(eventName: string)
+```
 
 ### RPC Requests
 The pattern of listening to RPC requests described at https://www.rabbitmq.com/tutorials/tutorial-six-javascript.html
