@@ -27,10 +27,10 @@ jobs:
       rabbitmq:
         image: rabbitmq:alpine
         ports:
-          - 4369
-          - 5672
-          - 5671
-          - 25672
+          - 34369:4369
+          - 35671:5671
+          - 35672:5672
+          - 46872:25672
         env:
           RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
           RABBITMQ_DEFAULT_USER: rabbitmq
