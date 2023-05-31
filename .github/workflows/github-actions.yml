@@ -24,6 +24,7 @@ jobs:
         image: rabbitmq:alpine
         ports:
           - 5672:5672
+          - 15672:15672
         env:
           RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
           RABBITMQ_DEFAULT_USER: rabbitmq
@@ -49,7 +50,13 @@ jobs:
       - run: echo "The workflow is now ready to test your code on the runner."
       - name: Installing dependencies
         run: npm install
-      - run: lsof -i :5672
+      - name: Check if RabbitMQ is running
+        run: |
+          curl --retry 10 --retry-delay 5 -f http://localhost:15672 >/dev/null 2>&1
+          if [ $? -ne 0 ]; then
+            echo "RabbitMQ is not running"
+            exit 1
+          fi
       - name: Testing
         run: npm test
       - run: echo "🍏 This job's status is ${{ job.status }}."
