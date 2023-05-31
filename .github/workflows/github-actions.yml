@@ -6,6 +6,8 @@ on:
     branches:
       - master
   pull_request:
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -43,11 +45,21 @@ jobs:
       - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
       - name: Check out repository code
         uses: actions/checkout@v3
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "The workflow is now ready to test your code on the runner."
       - name: Installing dependencies
         run: npm install
 
       - name: Testing
         run: npm test
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+      - run: echo "Job's status is ${{ job.status }}."
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
