@@ -142,7 +142,7 @@ var options = {
 
 var mqOptions = {
 	exchange_name: 'onjs_test',
-	url: 'amqp://rabbitmq:rabbitmq@localhost:35672/'
+	url: 'amqp://rabbitmq:rabbitmq@localhost:5672/'
 }
 
 var mq = new MQ(mqOptions)
