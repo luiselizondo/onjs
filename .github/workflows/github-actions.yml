@@ -1,5 +1,5 @@
 name: GitHub Actions
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+run-name: ${{ github.actor }} is testing and building changes
 on: 
   workflow_dispatch:
   push:
@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  test-and-build:
     runs-on: ubuntu-latest
     container: node:16-bullseye
     services:
@@ -53,13 +53,11 @@ jobs:
       - name: Testing
         run: npm test
       - run: echo "Job's status is ${{ job.status }}."
-  publish:
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/setup-node@v3
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
-      - run: npm publish
+      - name: Publishing to NPM
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
