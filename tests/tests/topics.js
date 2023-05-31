@@ -12,7 +12,7 @@ describe('Topics', function () {
   var config = {
     mq: {
       exchange_name: 'onjs_test',
-      url: 'amqp://rabbitmq:rabbitmq@localhost:5672/',
+      url: 'amqp://rabbitmq:rabbitmq@127.0.0.1:5672/',
     },
     redis: {
       port: REDIS_PORT,
