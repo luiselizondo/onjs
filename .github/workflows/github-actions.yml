@@ -34,11 +34,14 @@ jobs:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Start RabbitMQ
-        uses: namoshek/rabbitmq-github-action@v1
+      - uses: getong/rabbitmq-action@v1.2
         with:
-          version: '3.8.9'
-          ports: '5672:5672'
+          rabbitmq version: '3.8.2-management-alpine'
+          host port: 5672
+          rabbitmq user: 'rabbitmq'
+          rabbitmq password: 'rabbitmq'
+          rabbitmq vhost: '/'
+
       - name: Check out repository code
         uses: actions/checkout@v3
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
