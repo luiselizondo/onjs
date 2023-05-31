@@ -17,11 +17,11 @@ describe('On.js', function () {
   var config = {
     mq: {
       exchange_name: 'onjs_test',
-      url: 'amqp://rabbitmq:rabbitmq@localhost:5672/',
+      url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
     },
     redis: {
       port: REDIS_PORT,
-      host: 'rabbitmq'
+      host: 'redis'
     }
   }
 
