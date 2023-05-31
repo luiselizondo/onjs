@@ -49,6 +49,7 @@ jobs:
       - run: echo "The workflow is now ready to test your code on the runner."
       - name: Installing dependencies
         run: npm install
+      - run: lsof -i :5672
       - name: Testing
         run: npm test
       - run: echo "🍏 This job's status is ${{ job.status }}."
