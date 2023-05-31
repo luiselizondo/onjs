@@ -20,15 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     container: node:16-bullseye
     services:
-      rabbitmq:
-        image: rabbitmq:alpine
-        ports:
-          - 5672:5672
-        env:
-          RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
-          RABBITMQ_DEFAULT_USER: rabbitmq
-          RABBITMQ_DEFAULT_PASS: rabbitmq
-          RABBITMQ_DEFAULT_VHOST: /
       redis:
         image: redis:alpine
         ports:
@@ -43,19 +34,19 @@ jobs:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Start RabbitMQ
+        uses: namoshek/rabbitmq-github-action@v1
+        with:
+          version: '3.8.9'
+          ports: '5672:5672'
+          container-name: 'rabbitmq'
       - name: Check out repository code
         uses: actions/checkout@v3
       - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
       - run: echo "The workflow is now ready to test your code on the runner."
       - name: Installing dependencies
         run: npm install
-      - name: Check if RabbitMQ is running
-        run: |
-          curl --retry 30 --retry-delay 5 -f http://localhost:5672 >/dev/null 2>&1
-          if [ $? -ne 0 ]; then
-            echo "RabbitMQ is not running"
-            exit 1
-          fi
+
       - name: Testing
         run: npm test
       - run: echo "🍏 This job's status is ${{ job.status }}."
