@@ -51,7 +51,7 @@ jobs:
         run: npm install
       - name: Check if RabbitMQ is running
         run: |
-          curl --retry 10 --retry-delay 5 -f http://localhost:5672 >/dev/null 2>&1
+          curl --retry 30 --retry-delay 5 -f http://localhost:5672 >/dev/null 2>&1
           if [ $? -ne 0 ]; then
             echo "RabbitMQ is not running"
             exit 1
