@@ -9,11 +9,13 @@ REDIS_CONTAINER_PORT=19379
 
 function createRabbitContainer() {
 	id=$(docker run -d --name ${RABBIT_CONTAINER_NAME} \
-  -p ${RABBIT_CONTAINER_PORT}:5672 \
+  -p 5672 \
   -e RABBITMQ_ERLANG_COOKIE=SWQOKODSQALRPCLNMEQG \
   -e RABBITMQ_DEFAULT_USER=rabbitmq \
   -e RABBITMQ_DEFAULT_PASS=rabbitmq \
-  -e RABBITMQ_DEFAULT_VHOST=/ rabbitmq:alpine)
+  -e RABBITMQ_DEFAULT_VHOST=/ \
+  --hostname rabbitmq \
+  rabbitmq:alpine)
 	echo $id
 }
 
