@@ -22,7 +22,7 @@ To achieve this on On.js you have to register the event, declare the properties 
 
 On.js uses it's own local Redis based queue to order to avoid duplicates if multiple services listen to the same event
 
-On.js provides two options for working with topics. Processing and Dispatching
+On.js provides three options for working with topics. Processing, Dispatching and Broadcasting
 
 Processing means that the task will be added to the queue and processed as soon as the queue determines that it can start processing it.
 
@@ -35,6 +35,16 @@ on
 	.do(callback: function)
 
 ```
+
+Broadcasting means that the task will immediately be executed by ALL the listeners without using redis, the tasks will be "duplicated" across all listeners.
+
+```
+on
+	.broadcastReceived(eventName: string)
+	.do(callback: function)
+
+```
+
 
 #### Processing
 
