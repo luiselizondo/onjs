@@ -6,6 +6,8 @@ on:
     branches:
       - master
   pull_request:
+    branches:
+      - '**'
   release:
     types: [published]
 
@@ -19,7 +21,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-and-build:
+  test:
+    # This job runs on pull requests and push to master branch
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     container: node:16-bullseye
     services:
@@ -61,6 +65,33 @@ jobs:
 
       - name: Testing
         run: npm test
+      
+      - run: echo "Job's status is ${{ job.status }}."
+
+  build-and-publish:
+    # This job runs on push to master branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      
+      - run: echo "The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "The workflow is now ready to build your code on the runner."
+
+      # Setup .npmrc file to publish to npm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Building
+        run: npm run build
       
       - run: echo "Job's status is ${{ job.status }}."
       
