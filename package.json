@@ -30,6 +30,6 @@
   "dependencies": {
     "amqplib": "^0.10.3",
     "bull": "^3.29.3",
-    "mocha": "^5.2.0"
+    "mocha": "^11.1.0"
   }
 }
