@@ -6,6 +6,8 @@ on:
     branches:
       - master
   pull_request:
+    branches:
+      - '**'
   release:
     types: [published]
 
@@ -20,6 +22,8 @@ concurrency:
 
 jobs:
   test-and-build:
+    # This job runs on push to master branch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     container: node:16-bullseye
     services:
@@ -68,3 +72,50 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  test:
+    # This job runs on pull requests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container: node:16-bullseye
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 19379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:alpine
+        ports:
+          - 5672:5672
+        env:
+          RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
+          RABBITMQ_DEFAULT_USER: rabbitmq
+          RABBITMQ_DEFAULT_PASS: rabbitmq
+          RABBITMQ_DEFAULT_VHOST: /
+
+    steps:
+      - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      
+      - run: echo "The ${{ github.repository }} repository has been cloned to the runner."
+      - run: echo "The workflow is now ready to test your code on the runner."
+
+      # Setup .npmrc file to publish to npm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Installing dependencies
+        run: npm ci
+
+      - name: Testing
+        run: npm test
+      
+      - run: echo "Job's status is ${{ job.status }}."
