@@ -68,7 +68,8 @@ jobs:
       
       - run: echo "Job's status is ${{ job.status }}."
 
-  build-and-publish:
+  publish:
+    needs: test
     # This job runs on push to master branch
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
