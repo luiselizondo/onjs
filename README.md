@@ -28,7 +28,7 @@ Processing means that the task will be added to the queue and processed as soon 
 
 Dispatching means that the task will be added to the queue but instead of being processed, it will be sent to MQ with another name.
 
-```
+```javascript
 on
 	.eventReceived(eventName: string)
 	.withProperties(properties: array)
@@ -38,7 +38,7 @@ on
 
 Broadcasting means that the task will immediately be executed by ALL the listeners without using redis, the tasks will be "duplicated" across all listeners.
 
-```
+```javascript
 on
 	.broadcastReceived(eventName: string)
 	.do(callback: function)
@@ -48,7 +48,7 @@ on
 
 #### Processing
 
-```
+```javascript
 on
 	.eventReceived(eventName: string)
 	.withProperties(properties: array)
@@ -59,7 +59,7 @@ Any event received with the name registered on ```eventReceived``` will be added
 
 #### Dispatching
 
-```
+```javascript
 on
 	.eventReceived(eventName: string)
 	.withProperties(properties: array)
@@ -74,7 +74,7 @@ The pattern of listening to work queues is described at https://www.rabbitmq.com
 
 This are tasks that will be executed by a queue
 
-```
+```javascript
 on
 	.taskReceived(eventName: string)
 	.withProperties(properties: array)
@@ -87,7 +87,7 @@ This type of queues require the rabbitmq-delayed-message-exchange plugin
 
 The task will arrive at the queue with a set delay
 
-```
+```javascript
 on
 	.taskReceived(eventName: string, options: { isDelayed: boolean})
 	.withProperties(properties: array)
@@ -99,7 +99,7 @@ The pattern of listening to RPC requests described at https://www.rabbitmq.com/t
 
 On.js will order MQ to start listening for events registered and the callback registered will be executed by MQ and the results sent to the client who requested the data.
 
-```
+```javascript
 on
 	.eventReceived(eventName: string)
 	.withProperties(properties: array)
@@ -113,7 +113,7 @@ The response will be a JSON string so you will have to parse it. The type of res
 
 To initialize initialize a new instance and then call .init()
 
-```
+```javascript
 var options = {
 	redis: {
 		host: REDIS_HOST,
@@ -132,9 +132,30 @@ var on = new On(options)
 on.init()
 ```
 
+### reconnecting
+
+By default onjs will try to reconnect to rabbitmq if the connection is closed, including when using the MQ library to close a connection directly, if you need to tear down use onjs.tearDown() function, or you can disable this behavior by setting the config option `reconnectOnClose` to false
+
+```javascript
+const options = {
+	redis: {
+		host: REDIS_HOST,
+		port: REDIS_PORT
+	},
+	mq: {
+		url: RABBITMQ_URL,
+  	exchange_name: EXCHANGE_NAME
+	},
+	reconnectOnClose: false,
+}
+
+const on = new On(options)
+on.init()
+```
+
 ## Usage Example
 
-```
+```javascript
 var RabbitMQ = require('rabbitmq-lib')
 var On = require('./lib/on/on.js')
 
@@ -203,13 +224,13 @@ on.init()
 # Debugging and Logging
 Running 
 
-```
+```javascript
 on.debug()
 ```
 
 will enable all logging. If you only want to enable one particular event to have logging, you can do it as well by calling the .log method on a particular event:
 
-```
+```javascript
 on
 	.requestReceived('someRequest')
 	.withProperties(['userId'])
@@ -222,7 +243,7 @@ on
 # MQ Dependency
 The module has a dependency on a MQ class that handles the communication with MQ. In theory any kind of service with MQ should work as long as the communication with MQ is abstracted. The methods needed in the constructor are:
 
-```
+```javascript
 connect()
 disconnect()
 publish(eventName, data)
