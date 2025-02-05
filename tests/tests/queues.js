@@ -31,9 +31,7 @@ describe('Queue', function () {
   on.debug()
 
   before(async function () {
-    console.log('1')
     await mq1.connect()
-    console.log('2')
     var channelConsumer = await mq1.createChannel()
     sender.setChannel(channelConsumer)
 
