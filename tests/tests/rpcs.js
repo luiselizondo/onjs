@@ -20,7 +20,8 @@ describe('RPC', function () {
     redis: {
       port: REDIS_PORT,
       host: 'redis'
-    }
+    },
+    reconnectOnClose: false,
   }
 
   var mq = new MQ(config.mq)

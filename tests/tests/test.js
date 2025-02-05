@@ -24,7 +24,8 @@ describe('On.js', function () {
     redis: {
       port: REDIS_PORT,
       host: 'redis'
-    }
+    },
+    reconnectOnClose: false,
   }
 
   describe('Topics registration', function () {

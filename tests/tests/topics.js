@@ -19,7 +19,8 @@ describe('Topics', function () {
     redis: {
       port: REDIS_PORT,
       host: 'redis'
-    }
+    },
+    reconnectOnClose: false,
   }
 
   var mq1 = new MQ(config.mq)

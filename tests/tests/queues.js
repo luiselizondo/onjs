@@ -21,7 +21,7 @@ describe('Queue', function () {
     redis: {
       port: REDIS_PORT,
       host: 'redis'
-    }
+    },
   }
 
   var mq1 = new MQ(config.mq)
