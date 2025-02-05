@@ -15,6 +15,8 @@ describe('Queue', function () {
     mq: {
       exchange_name: 'onjs_test',
       url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
+      connectMaxAttempts: 1,
+      delayMS: 10,
     },
     redis: {
       port: REDIS_PORT,
@@ -29,7 +31,9 @@ describe('Queue', function () {
   on.debug()
 
   before(async function () {
+    console.log('1')
     await mq1.connect()
+    console.log('2')
     var channelConsumer = await mq1.createChannel()
     sender.setChannel(channelConsumer)
 
