@@ -1,0 +1,44 @@
+name: Publish to npm
+run-name: Publishing onjs ${{ github.ref_name }} to npm
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+# npm Trusted Publishing: the package is configured on npmjs.com to trust
+# this repository + workflow filename, so publishing authenticates via OIDC
+# (no NPM_TOKEN required). Requires npm >= 11.5.1 (Node 24 ships it).
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    services:
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports:
+          - 5672:5672
+        env:
+          RABBITMQ_DEFAULT_USER: rabbitmq
+          RABBITMQ_DEFAULT_PASS: rabbitmq
+          RABBITMQ_DEFAULT_VHOST: /
+      redis:
+        image: redis:alpine
+        ports:
+          - 19379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Installing dependencies
+        run: npm ci
+      - name: Testing
+        run: npm test
+      - name: Publishing to NPM
+        run: npm publish
