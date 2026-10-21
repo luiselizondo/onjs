@@ -80,6 +80,22 @@ on
 	.withProperties(properties: array)
 	.do(eventName: string)
 ```
+#### Manual Acknowledgement
+
+By default, tasks are acknowledged as soon as they are delivered, so a task that fails (or a container that crashes mid-task) is not redelivered.
+
+Tasks registered with `.ackAfterProcessing()` are consumed with **manual acknowledgement**: the registered actions are awaited and the message is acknowledged only after they succeed. The broker holds the next delivery until then (prefetch 1 across the channel), so the service processes one task at a time and nothing is lost if the container crashes mid-task (unacknowledged messages are redelivered).
+
+If an action fails, the message is dropped without requeueing — the publisher is expected to send the task again when needed (e.g. when the work is requested once more). All tasks sharing the channel share one in-flight message, so registering more than one queue with `.ackAfterProcessing()` keeps a single task in flight across all of them.
+
+```javascript
+on
+	.taskReceived(eventName: string)
+	.withProperties(properties: array)
+	.ackAfterProcessing()
+	.do(eventName: string)
+```
+
 ### Delayed Queues
 
 The pattern of listening to work queues is described at https://www.rabbitmq.com/tutorials/tutorial-two-javascript.html
