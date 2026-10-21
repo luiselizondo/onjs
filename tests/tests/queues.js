@@ -98,3 +98,185 @@ describe('Queue', function () {
     })
   })
 })
+
+describe('Queue with manual ack', function () {
+  this.timeout(10000)
+
+  var config = {
+    mq: {
+      exchange_name: 'onjs_test_manual_ack',
+      url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
+      connectMaxAttempts: 1,
+      delayMS: 10,
+    },
+    redis: {
+      port: REDIS_PORT,
+      host: 'redis'
+    },
+  }
+
+  // These tests use a stubbed queueInstance and a fake channel,
+  // so they don't need a live broker connection
+  function createFakeChannel () {
+    var fake = {
+      prefetchCalls: [],
+      assertQueueCalls: [],
+      consumeCalls: [],
+      ackCalls: [],
+      nackCalls: [],
+      prefetch: async function (count, globalScope) {
+        fake.prefetchCalls.push([count, globalScope])
+      },
+      assertQueue: async function (queueName, options) {
+        fake.assertQueueCalls.push([queueName, options])
+        return { queue: queueName }
+      },
+      consume: async function (queueName, handler, options) {
+        fake.consumeCalls.push({ queueName: queueName, handler: handler, options: options })
+      },
+      ack: function (message) {
+        fake.ackCalls.push(message)
+      },
+      nack: function (message, allUpTo, requeue) {
+        fake.nackCalls.push([message, allUpTo, requeue])
+      }
+    }
+    return fake
+  }
+
+  function createStubbedOn () {
+    var onInstance = new On(config)
+    var channel = createFakeChannel()
+    var listenCalls = []
+    var listenManualCalls = []
+    var listenManualHandlers = []
+
+    onInstance.mqInstance.createChannel = async function () {
+      return channel
+    }
+
+    onInstance.queueInstance = {
+      setChannel: function () {},
+      on: function () {},
+      listen: async function (queueNames) {
+        listenCalls.push(queueNames)
+      },
+      listenManual: async function (queueNames, handler) {
+        listenManualCalls.push(queueNames)
+        listenManualHandlers.push(handler)
+      }
+    }
+
+    return { onInstance: onInstance, channel: channel, listenCalls: listenCalls, listenManualCalls: listenManualCalls, listenManualHandlers: listenManualHandlers }
+  }
+
+  it('Should route auto ack tasks to listen and manual ack tasks to the manual consumer', async function () {
+    var stubs = createStubbedOn()
+
+    function execution (incomingData) {
+      return
+    }
+
+    stubs.onInstance
+    .taskReceived('autoAckQueue')
+    .andProcess(execution)
+
+    stubs.onInstance
+    .taskReceived('manualAckQueue')
+    .ackAfterProcessing()
+    .andProcess(execution)
+
+    await stubs.onInstance._startEventListeners()
+
+    stubs.listenCalls.should.deepEqual([['autoAckQueue']])
+    stubs.listenManualCalls.should.deepEqual([['manualAckQueue']])
+    stubs.listenManualCalls[0].should.not.deepEqual(stubs.listenCalls[0])
+  })
+
+  it('Should await the actions and ack the message after processing', async function () {
+    var stubs = createStubbedOn()
+    var executed = []
+    var actionFinished = false
+
+    stubs.onInstance
+    .taskReceived('manualAckQueue')
+    .ackAfterProcessing()
+    .andProcess(async function (incomingData) {
+      await new Promise((resolve) => { setTimeout(resolve, 25) })
+      executed.push(incomingData)
+      actionFinished = true
+    })
+
+    await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
+
+    var handler = stubs.listenManualHandlers[0]
+
+    await handler({ name: 'Superman' }, { fields: { routingKey: 'manualAckQueue' } })
+
+    actionFinished.should.equal(true)
+    executed.should.deepEqual([{ name: 'Superman' }])
+  })
+
+  it('Should nack and drop the message when the task action fails', async function () {
+    var stubs = createStubbedOn()
+    var executed = false
+
+    stubs.onInstance
+    .taskReceived('failingManualQueue')
+    .ackAfterProcessing()
+    .andProcess(async function () {
+      executed = true
+      throw new Error('action failed')
+    })
+
+    await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
+
+    var handler = stubs.listenManualHandlers[0]
+
+    await handler({ name: 'Superman' }, { fields: { routingKey: 'failingManualQueue' } }).should.be.rejectedWith('action failed')
+
+    executed.should.equal(true)
+  })
+
+  it('Should nack the message when payload validation fails', async function () {
+    var stubs = createStubbedOn()
+    var executed = false
+
+    stubs.onInstance
+    .taskReceived('validatedManualQueue')
+    .withProperties(['name'])
+    .ackAfterProcessing()
+    .andProcess(async function () {
+      executed = true
+    })
+
+    await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
+
+    var handler = stubs.listenManualHandlers[0]
+
+    await handler({ other: 'value' }, { fields: { routingKey: 'validatedManualQueue' } }).should.be.rejectedWith('Validation failed for task validatedManualQueue')
+
+    executed.should.equal(false)
+  })
+
+  it('Should ack the message when payload validation passes', async function () {
+    var stubs = createStubbedOn()
+    var executed = []
+
+    stubs.onInstance
+    .taskReceived('validatedManualQueue')
+    .withProperties(['name'])
+    .ackAfterProcessing()
+    .andProcess(async function (incomingData) {
+      executed.push(incomingData)
+    })
+
+    await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
+
+    var handler = stubs.listenManualHandlers[0]
+
+    await handler({ name: 'Superman' }, { fields: { routingKey: 'validatedManualQueue' } })
+
+    executed.should.deepEqual([{ name: 'Superman' }])
+  })
+})
