@@ -28,7 +28,7 @@
     "mocha": "^5.2.0"
   },
   "dependencies": {
-    "rabbitmq-lib": "luiselizondo/rabbitmq-lib#BAC-3119-manual-ack",
+    "rabbitmq-lib": "^2.4.0",
     "amqplib": "^0.10.5",
     "bull": "^3.29.3"
   }
