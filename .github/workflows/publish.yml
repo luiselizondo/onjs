@@ -16,6 +16,11 @@ permissions:
 
 jobs:
   publish:
+    # The job runs in a container so the services are reachable by their
+    # hostnames ("rabbitmq", "redis") - on VM runners services are only
+    # reachable via localhost:mapped-port. Node 24 ships npm >= 11.5.1,
+    # required for OIDC trusted publishing.
+    container: node:24-bookworm
     runs-on: ubuntu-latest
     services:
       rabbitmq:
@@ -26,10 +31,20 @@ jobs:
           RABBITMQ_DEFAULT_USER: rabbitmq
           RABBITMQ_DEFAULT_PASS: rabbitmq
           RABBITMQ_DEFAULT_VHOST: /
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
       redis:
         image: redis:alpine
         ports:
           - 19379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
