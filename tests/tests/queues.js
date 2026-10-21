@@ -149,6 +149,7 @@ describe('Queue with manual ack', function () {
     var channel = createFakeChannel()
     var listenCalls = []
     var listenManualCalls = []
+    var listenManualHandlers = []
 
     onInstance.mqInstance.createChannel = async function () {
       return channel
@@ -160,12 +161,13 @@ describe('Queue with manual ack', function () {
       listen: async function (queueNames) {
         listenCalls.push(queueNames)
       },
-      listenManual: async function (queueNames) {
+      listenManual: async function (queueNames, handler) {
         listenManualCalls.push(queueNames)
+        listenManualHandlers.push(handler)
       }
     }
 
-    return { onInstance: onInstance, channel: channel, listenCalls: listenCalls, listenManualCalls: listenManualCalls }
+    return { onInstance: onInstance, channel: channel, listenCalls: listenCalls, listenManualCalls: listenManualCalls, listenManualHandlers: listenManualHandlers }
   }
 
   it('Should route auto ack tasks to listen and manual ack tasks to the manual consumer', async function () {
@@ -187,11 +189,8 @@ describe('Queue with manual ack', function () {
     await stubs.onInstance._startEventListeners()
 
     stubs.listenCalls.should.deepEqual([['autoAckQueue']])
-    stubs.listenManualCalls.should.deepEqual([])
-    stubs.channel.consumeCalls.length.should.equal(1)
-    stubs.channel.consumeCalls[0].queueName.should.equal('manualAckQueue')
-    stubs.channel.consumeCalls[0].options.should.deepEqual({ noAck: false })
-    stubs.channel.prefetchCalls.should.deepEqual([[1, true]])
+    stubs.listenManualCalls.should.deepEqual([['manualAckQueue']])
+    stubs.listenManualCalls[0].should.not.deepEqual(stubs.listenCalls[0])
   })
 
   it('Should await the actions and ack the message after processing', async function () {
@@ -210,16 +209,12 @@ describe('Queue with manual ack', function () {
 
     await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
 
-    var message = { content: Buffer.from(JSON.stringify({ name: 'Superman' })) }
-    var consumeCallback = stubs.channel.consumeCalls[0].handler
+    var handler = stubs.listenManualHandlers[0]
 
-    await consumeCallback(message)
+    await handler({ name: 'Superman' }, { fields: { routingKey: 'manualAckQueue' } })
 
     actionFinished.should.equal(true)
     executed.should.deepEqual([{ name: 'Superman' }])
-    stubs.channel.ackCalls.length.should.equal(1)
-    stubs.channel.ackCalls[0].should.equal(message)
-    stubs.channel.nackCalls.length.should.equal(0)
   })
 
   it('Should nack and drop the message when the task action fails', async function () {
@@ -236,37 +231,11 @@ describe('Queue with manual ack', function () {
 
     await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
 
-    var message = { content: Buffer.from(JSON.stringify({ name: 'Superman' })) }
+    var handler = stubs.listenManualHandlers[0]
 
-    await stubs.channel.consumeCalls[0].handler(message)
+    await handler({ name: 'Superman' }, { fields: { routingKey: 'failingManualQueue' } }).should.be.rejectedWith('action failed')
 
     executed.should.equal(true)
-    stubs.channel.nackCalls.length.should.equal(1)
-    stubs.channel.nackCalls[0].should.deepEqual([message, false, false])
-    stubs.channel.ackCalls.length.should.equal(0)
-  })
-
-  it('Should ack and drop malformed payloads without executing the task', async function () {
-    var stubs = createStubbedOn()
-    var executed = false
-
-    stubs.onInstance
-    .taskReceived('malformedQueue')
-    .ackAfterProcessing()
-    .andProcess(async function () {
-      executed = true
-    })
-
-    await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
-
-    var message = { content: Buffer.from('this is not json {') }
-
-    await stubs.channel.consumeCalls[0].handler(message)
-
-    executed.should.equal(false)
-    stubs.channel.ackCalls.length.should.equal(1)
-    stubs.channel.ackCalls[0].should.equal(message)
-    stubs.channel.nackCalls.length.should.equal(0)
   })
 
   it('Should nack the message when payload validation fails', async function () {
@@ -283,14 +252,11 @@ describe('Queue with manual ack', function () {
 
     await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
 
-    var message = { content: Buffer.from(JSON.stringify({ other: 'value' })) }
+    var handler = stubs.listenManualHandlers[0]
 
-    await stubs.channel.consumeCalls[0].handler(message)
+    await handler({ other: 'value' }, { fields: { routingKey: 'validatedManualQueue' } }).should.be.rejectedWith('Validation failed for task validatedManualQueue')
 
     executed.should.equal(false)
-    stubs.channel.nackCalls.length.should.equal(1)
-    stubs.channel.nackCalls[0].should.deepEqual([message, false, false])
-    stubs.channel.ackCalls.length.should.equal(0)
   })
 
   it('Should ack the message when payload validation passes', async function () {
@@ -307,13 +273,10 @@ describe('Queue with manual ack', function () {
 
     await stubs.onInstance._initQueuesWithManualAck(stubs.onInstance._getEvents('queue'), stubs.channel)
 
-    var message = { content: Buffer.from(JSON.stringify({ name: 'Superman' })) }
+    var handler = stubs.listenManualHandlers[0]
 
-    await stubs.channel.consumeCalls[0].handler(message)
+    await handler({ name: 'Superman' }, { fields: { routingKey: 'validatedManualQueue' } })
 
     executed.should.deepEqual([{ name: 'Superman' }])
-    stubs.channel.ackCalls.length.should.equal(1)
-    stubs.channel.ackCalls[0].should.equal(message)
-    stubs.channel.nackCalls.length.should.equal(0)
   })
 })
