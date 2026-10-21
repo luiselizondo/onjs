@@ -1,5 +1,25 @@
 #!/bin/bash
+# Runs the onjs test suite in a container attached to a shared docker network,
+# so the suite can resolve the broker as "rabbitmq" and redis as "redis"
+# (the hostnames the tests are configured with).
 
 $(pwd)/bin/prepare-test-environment
 
-npm test
+docker network create onjs_test > /dev/null 2>&1 || true
+# disconnect first so a re-connect always applies the hostname aliases
+docker network disconnect onjs_test onjs_rabbit_test > /dev/null 2>&1 || true
+docker network disconnect onjs_test onjs_redis_test > /dev/null 2>&1 || true
+docker network connect --alias rabbitmq onjs_test onjs_rabbit_test
+docker network connect --alias redis onjs_test onjs_redis_test
+
+if [ ! -d "node_modules" ]; then
+  echo "Installing dependencies"
+  docker run --rm --network onjs_test -v ${PWD}:/app -w /app rever/node:22 npm install
+fi
+
+echo "Running the test suite in a container (broker: rabbitmq, redis: redis)"
+docker run --rm --name onjs_test_runner \
+  --network onjs_test \
+  -v ${PWD}:/app -w /app \
+  -e "NODE_ENV=test" \
+  rever/node:22 npm test
