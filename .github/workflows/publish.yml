@@ -16,6 +16,11 @@ permissions:
 
 jobs:
   publish:
+    # The job runs in a container so the services are reachable by their
+    # hostnames ("rabbitmq", "redis") - on VM runners services are only
+    # reachable via localhost:mapped-port. Node 24 ships npm >= 11.5.1,
+    # required for OIDC trusted publishing.
+    container: node:24-bookworm
     runs-on: ubuntu-latest
     services:
       rabbitmq:
