@@ -101,18 +101,11 @@ describe('Queue', function () {
 
   it("Should initialize and process a delayed queue task", async function () {
     // The delayed round trip needs the delayed-message exchange plugin,
-    // installed by bin/prepare-test-environment. CI services run the stock
-    // image, where this test skips (the routing regression test above still
-    // guards the delayed path everywhere).
-    var probeChannel = await mq1.createChannel()
-    var pluginSupported = true
-    try {
-      await probeChannel.assertExchange('onjs_delayed_probe', 'x-delayed-message', { arguments: { 'x-delayed-type': 'direct' } })
-    } catch (err) {
-      pluginSupported = false
-    }
-    try { await probeChannel.close() } catch (err) { }
-    if (!pluginSupported) this.skip()
+    // installed by bin/prepare-test-environment. CI runs the stock image
+    // without the plugin: bin/test sets ONJS_DELAYED_PLUGIN_TESTS=true so
+    // this test runs there, and CI skips it (the routing regression test
+    // still guards the delayed path on every broker).
+    if (process.env.ONJS_DELAYED_PLUGIN_TESTS !== 'true') this.skip()
 
     var executed = null
 
