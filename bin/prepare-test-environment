@@ -87,3 +87,11 @@ else
   createRabbitContainer
   sleep 5
 fi
+
+function installDelayedMessageExchangePlugin() {
+  docker exec ${RABBIT_CONTAINER_NAME} sh -c "wget -q https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v3.13.0/rabbitmq_delayed_message_exchange-3.13.0.ez -O /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.13.0.ez"
+  docker exec ${RABBIT_CONTAINER_NAME} rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+}
+
+echo "Ensuring the delayed-message exchange plugin is installed"
+installDelayedMessageExchangePlugin
