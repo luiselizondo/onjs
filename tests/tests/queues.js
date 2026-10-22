@@ -100,6 +100,13 @@ describe('Queue', function () {
   })
 
   it("Should initialize and process a delayed queue task", async function () {
+    // The delayed round trip needs the delayed-message exchange plugin,
+    // installed by bin/prepare-test-environment. CI runs the stock image
+    // without the plugin: bin/test sets ONJS_DELAYED_PLUGIN_TESTS=true so
+    // this test runs there, and CI skips it (the routing regression test
+    // still guards the delayed path on every broker).
+    if (process.env.ONJS_DELAYED_PLUGIN_TESTS !== 'true') this.skip()
+
     var executed = null
 
     function execution(incomingData) {
@@ -131,6 +138,7 @@ describe('Queue with manual ack', function () {
   var config = {
     mq: {
       exchange_name: 'onjs_test_manual_ack',
+      delayed_exchange_name: 'onjs_test_manual_ack_delayed',
       url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
       connectMaxAttempts: 1,
       delayMS: 10,
@@ -176,6 +184,7 @@ describe('Queue with manual ack', function () {
     var listenCalls = []
     var listenManualCalls = []
     var listenManualHandlers = []
+    var listenOptions = []
 
     onInstance.mqInstance.createChannel = async function () {
       return channel
@@ -184,8 +193,9 @@ describe('Queue with manual ack', function () {
     onInstance.queueInstance = {
       setChannel: function () {},
       on: function () {},
-      listen: async function (queueNames) {
+      listen: async function (queueNames, options) {
         listenCalls.push(queueNames)
+        listenOptions.push(options)
       },
       listenManual: async function (queueNames, handler) {
         listenManualCalls.push(queueNames)
@@ -193,7 +203,7 @@ describe('Queue with manual ack', function () {
       }
     }
 
-    return { onInstance: onInstance, channel: channel, listenCalls: listenCalls, listenManualCalls: listenManualCalls, listenManualHandlers: listenManualHandlers }
+    return { onInstance: onInstance, channel: channel, listenCalls: listenCalls, listenOptions: listenOptions, listenManualCalls: listenManualCalls, listenManualHandlers: listenManualHandlers }
   }
 
   it('Should route auto ack tasks to listen and manual ack tasks to the manual consumer', async function () {
@@ -217,6 +227,23 @@ describe('Queue with manual ack', function () {
     stubs.listenCalls.should.deepEqual([['autoAckQueue']])
     stubs.listenManualCalls.should.deepEqual([['manualAckQueue']])
     stubs.listenManualCalls[0].should.not.deepEqual(stubs.listenCalls[0])
+  })
+
+  it('Should route delayed tasks through the auto-ack listen with isDelayed', async function () {
+    var stubs = createStubbedOn()
+
+    function execution (incomingData) {
+      return
+    }
+
+    stubs.onInstance
+    .taskReceived('delayedQueue', { isDelayed: true })
+    .andProcess(execution)
+
+    await stubs.onInstance._startEventListeners()
+
+    stubs.listenCalls.should.deepEqual([['delayedQueue']])
+    stubs.listenOptions[0].should.have.property('isDelayed', true)
   })
 
   it('Should await the actions and ack the message after processing', async function () {
