@@ -14,6 +14,7 @@ describe('Queue', function () {
   var config = {
     mq: {
       exchange_name: 'onjs_test',
+      delayed_exchange_name: 'onjs_test_delayed',
       url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
       connectMaxAttempts: 1,
       delayMS: 10,
@@ -96,6 +97,31 @@ describe('Queue', function () {
       name: 'Wonder Woman',
       superpower: 'Fly'
     })
+  })
+
+  it("Should initialize and process a delayed queue task", async function () {
+    var executed = null
+
+    function execution(incomingData) {
+      executed = incomingData
+      return
+    }
+
+    on
+    .taskReceived('delayedQueueRegression', { isDelayed: true })
+    .andProcess(execution)
+
+    await on.init()
+
+    await sender.send('delayedQueueRegression', { name: 'Delayed Superman' }, 300)
+
+    var waited = 0
+    while (!executed && waited < 5000) {
+      await new Promise((resolve) => { setTimeout(resolve, 100) })
+      waited += 100
+    }
+
+    executed.should.have.property('name', 'Delayed Superman')
   })
 })
 
