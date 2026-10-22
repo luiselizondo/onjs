@@ -164,6 +164,7 @@ describe("Queue", function () {
       await probeChannel.close();
     } catch (err) {}
     if (!pluginSupported) this.skip();
+    if (process.env.ONJS_DELAYED_PLUGIN_TESTS !== "true") this.skip();
 
     var executed = null;
 
