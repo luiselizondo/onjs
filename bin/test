@@ -22,5 +22,4 @@ docker run --rm --name onjs_test_runner \
   --network onjs_test \
   -v ${PWD}:/app -w /app \
   -e "NODE_ENV=test" \
-  -e "ONJS_DELAYED_PLUGIN_TESTS=true" \
   rever/node:22 npm test
