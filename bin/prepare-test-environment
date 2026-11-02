@@ -91,6 +91,11 @@ fi
 function installDelayedMessageExchangePlugin() {
   docker exec ${RABBIT_CONTAINER_NAME} sh -c "wget -q https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/v3.13.0/rabbitmq_delayed_message_exchange-3.13.0.ez -O /opt/rabbitmq/plugins/rabbitmq_delayed_message_exchange-3.13.0.ez"
   docker exec ${RABBIT_CONTAINER_NAME} rabbitmq-plugins enable rabbitmq_delayed_message_exchange
+  # rabbitmq-plugins enable on a running broker needs a node restart to load
+  # the plugin, otherwise x-delayed-message exchanges fail with 406
+  # PRECONDITION_FAILED on the first fresh-machine run
+  docker restart ${RABBIT_CONTAINER_NAME} >/dev/null
+  sleep 5
 }
 
 echo "Ensuring the delayed-message exchange plugin is installed"
