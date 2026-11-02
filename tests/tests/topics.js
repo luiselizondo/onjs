@@ -4,7 +4,7 @@ var EventEmitter = require('events');
 class Events extends EventEmitter {}
 var MQ = require('rabbitmq-lib').MQ
 var Topic = require('rabbitmq-lib').Topic
-var REDIS_PORT = 19379
+var REDIS_PORT = 6379
 
 describe('Topics', function () {
   this.timeout(5000)
@@ -45,10 +45,14 @@ describe('Topics', function () {
   })
 
   it('Should execute a topic event', async function () {
+    var resolveExecution
+    var executionPromise = new Promise((resolve) => {
+      resolveExecution = resolve
+    })
+
     function execution(incomingData) {
       console.log('Incoming', incomingData)
-      incomingData.should.have.property('name', 'Flash')
-      incomingData.should.have.property('superpower', 'Run fast')
+      resolveExecution(incomingData)
     }
 
     on
@@ -62,6 +66,12 @@ describe('Topics', function () {
       name: 'Flash',
       superpower: 'Run fast'
     })
+
+    // The publish only guarantees delivery to the broker: awaiting the deferred
+    // proves the redis round trip actually ran the action.
+    var data = await executionPromise
+    data.should.have.property('name', 'Flash')
+    data.should.have.property('superpower', 'Run fast')
   });
 
   it("Should fail to execute because validation", async function () {

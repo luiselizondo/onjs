@@ -6,7 +6,7 @@ var MQ = require('rabbitmq-lib').MQ
 var Queue = require('rabbitmq-lib').Queue
 var Topic = require('rabbitmq-lib').Topic
 
-var REDIS_PORT = 19379
+var REDIS_PORT = 6379
 
 describe('Queue', function () {
   this.timeout(10000)
@@ -97,6 +97,49 @@ describe('Queue', function () {
       name: 'Wonder Woman',
       superpower: 'Fly'
     })
+  })
+
+  it("Should execute a redispatchable event only once for the same tid", async function () {
+    var dispatched = []
+
+    on
+    .eventReceived('dedupQueue')
+    .andDispatchAs('dedupTargetQueue')
+
+    on
+    .taskReceived('dedupTargetQueue')
+    .andProcess(function () {
+      return
+    })
+
+    await on.init()
+
+    // The redis processor redispatches to the mq; count those dispatches
+    // instead of hitting the broker twice (the point here is the redis dedup
+    // window, keyed by tid).
+    on.queueInstance.send = async function (newEventName) {
+      dispatched.push(newEventName)
+    }
+
+    var event = on._getEventByName('dedupQueue')
+    // unique per run: a fixed tid would already be a retained job from a
+    // previous run, and both adds would be ignored
+    var tid = 'dedup-' + Date.now() + '-' + Math.random().toString(16).slice(2)
+    var payload = { tid: tid, name: 'Wonder Woman', superpower: 'Fly' }
+
+    await on._redispatchToMQ(event, payload)
+    await on._redispatchToMQ(event, payload)
+
+    var waited = 0
+    while (dispatched.length === 0 && waited < 3000) {
+      await new Promise((resolve) => { setTimeout(resolve, 100) })
+      waited += 100
+    }
+
+    // give a duplicate job the chance to show up before asserting the window
+    await new Promise((resolve) => { setTimeout(resolve, 500) })
+
+    dispatched.should.deepEqual(['dedupTargetQueue'])
   })
 
   it("Should initialize and process a delayed queue task", async function () {

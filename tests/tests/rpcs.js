@@ -5,7 +5,7 @@ class Events extends EventEmitter {}
 var MQ = require('rabbitmq-lib').MQ
 var RPC = require('rabbitmq-lib').RPC
 
-var REDIS_PORT = 19379
+var REDIS_PORT = 6379
 
 describe('RPC', function () {
   this.timeout(10000)

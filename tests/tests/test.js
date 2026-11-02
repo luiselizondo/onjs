@@ -3,7 +3,7 @@ var On = require('../../index')
 var EventEmitter = require('events');
 class Events extends EventEmitter {}
 var MQ = require('rabbitmq-lib').MQ
-var REDIS_PORT = 19379
+var REDIS_PORT = 6379
 
 function nullMe(data) {
   return null
@@ -568,4 +568,59 @@ describe('On.js', function () {
       rpcs[0].actions[0].should.equal(nullMe)
     })
   });
+
+  describe('Modernization flags', function () {
+    it('Should tear down without throwing when init has not been called', async function () {
+      const on = new On(config)
+
+      await on.tearDown()
+    })
+
+    it('Should pass validation for an event registered without properties', function () {
+      const on = new On(config)
+
+      on.broadcastReceived('broadcastEvent')
+
+      const validation = on._validationIsSuccess('broadcastEvent', { any: 'data' })
+
+      validation.should.equal(true)
+    })
+
+    it('Should find events from the start of the registered list', function () {
+      const on = new On(config)
+
+      on
+      .eventReceived('firstEvent')
+      .eventReceived('secondEvent')
+
+      on._getEventIndex('firstEvent').should.equal(0)
+      on._getEventIndex('secondEvent').should.equal(1)
+      on._getEventIndex('nope').should.equal(-1)
+    })
+
+    it('Should attach a single error listener to the redis queue at registration time', function () {
+      const on = new On(config)
+
+      on.eventReceived('listenerEvent')
+
+      on.events[0].redisQueue.listenerCount('error').should.equal(1)
+    })
+
+    it('Should close the redis queue, the worker and the MQ connection on tearDown', async function () {
+      const on = new On(config)
+      on.eventReceived('tearDownEvent')
+
+      const closed = []
+      on.events[0].redisQueue.close = async function () { closed.push('queue') }
+      on.events[0].redisWorker = { close: async function () { closed.push('worker') } }
+      on.setConnection({ close: async function () { closed.push('connection') } })
+
+      await on.tearDown()
+      closed.should.deepEqual(['queue', 'worker', 'connection'])
+
+      // a second call finds no connection and must resolve without throwing
+      await on.tearDown()
+      should(on.getConnection()).not.be.ok()
+    })
+  })
 })
