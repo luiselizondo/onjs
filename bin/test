@@ -12,15 +12,26 @@ docker network disconnect onjs_test onjs_redis_test > /dev/null 2>&1 || true
 docker network connect --alias rabbitmq onjs_test onjs_rabbit_test
 docker network connect --alias redis onjs_test onjs_redis_test
 
+# A npm-linked rabbitmq-lib is a symlink pointing outside this directory
+# (usually into the global npm folder) — docker containers cannot follow it,
+# so the suite dies with "Cannot find module 'rabbitmq-lib'". When a link is
+# present, mount the resolved rabbitmq-lib checkout over it.
+LINK_TARGET=$(node -e "const fs = require('fs'); try { if (fs.lstatSync('node_modules/rabbitmq-lib').isSymbolicLink()) process.stdout.write(fs.realpathSync('node_modules/rabbitmq-lib')) } catch (e) {}" 2>/dev/null || true)
+EXTRA_MOUNTS=""
+if [ -n "$LINK_TARGET" ]; then
+  echo "rabbitmq-lib is npm-linked, mounting ${LINK_TARGET} into the containers"
+  EXTRA_MOUNTS="-v ${LINK_TARGET}:/app/node_modules/rabbitmq-lib"
+fi
+
 if [ ! -d "node_modules" ]; then
   echo "Installing dependencies"
-  docker run --rm --network onjs_test -v ${PWD}:/app -w /app rever/node:22-alpine npm install
+  docker run --rm --network onjs_test -v ${PWD}:/app ${EXTRA_MOUNTS} -w /app rever/node:22-alpine npm install
 fi
 
 echo "Running the test suite in a container (broker: rabbitmq, redis: redis)"
 docker run --rm --name onjs_test_runner \
   --network onjs_test \
-  -v ${PWD}:/app -w /app \
+  -v ${PWD}:/app ${EXTRA_MOUNTS} -w /app \
   -e "NODE_ENV=test" \
   -e "ONJS_DELAYED_PLUGIN_TESTS=true" \
   rever/node:22-alpine npm test
