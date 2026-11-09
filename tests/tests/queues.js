@@ -376,3 +376,85 @@ describe('Queue with manual ack', function () {
     executed.should.deepEqual([{ name: 'Superman' }])
   })
 })
+
+describe('Queue dispatcher validation containment', function () {
+  this.timeout(10000)
+
+  var config = {
+    mq: {
+      exchange_name: 'onjs_test',
+      url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
+      connectMaxAttempts: 1,
+      delayMS: 10,
+    },
+    redis: {
+      port: REDIS_PORT,
+      host: 'redis'
+    },
+  }
+
+  it('Should contain a validation failure when no error listener is registered', async function () {
+    var on = new On(config)
+    var executed = 0
+    var rejections = []
+    var onRejection = (err) => rejections.push(err)
+
+    on
+      .taskReceived('validationFailureNoListener')
+      .withProperties(['name'])
+      .do(function () { executed++ })
+
+    // no `error` listener registered on purpose — emitting `error` used to
+    // throw inside this async listener and surface as an unhandled
+    // rejection that crashes the process
+    process.on('unhandledRejection', onRejection)
+    try {
+      on._registerQueueEventDispatcher()
+
+      await on.queueInstance.emit('queueEventReceived', {
+        data: { wrong: 'payload' },
+        type: 'queue',
+        name: 'validationFailureNoListener',
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+    finally {
+      process.removeListener('unhandledRejection', onRejection)
+    }
+
+    rejections.length.should.be.equal(0)
+    executed.should.be.equal(0)
+  })
+
+  it('Should emit error once and keep the dispatcher alive when a listener is registered', async function () {
+    var on = new On(config)
+    var errors = []
+    var executedAfter = 0
+
+    on
+      .taskReceived('validationFailureWithListener')
+      .withProperties(['name'])
+      .do(function () { executedAfter++ })
+
+    on.on('error', (err) => errors.push(err))
+    on._registerQueueEventDispatcher()
+
+    await on.queueInstance.emit('queueEventReceived', {
+      data: {},
+      type: 'queue',
+      name: 'validationFailureWithListener',
+    })
+
+    errors.length.should.be.equal(1)
+    errors[0].message.should.match(/Validation failed/)
+    errors[0].event.should.have.property('eventName', 'validationFailureWithListener')
+
+    await on.queueInstance.emit('queueEventReceived', {
+      data: { name: 'Flash' },
+      type: 'queue',
+      name: 'validationFailureWithListener',
+    })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    executedAfter.should.be.equal(1)
+  })
+})
