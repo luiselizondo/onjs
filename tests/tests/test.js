@@ -469,6 +469,205 @@ describe('On.js', function () {
         expect(error).to.have.property('message', 'Dispatchable events should be registered as topics. Execute the method onEventReceived instead of onTaskReceived on the event testEvent')
       }
     })
+
+    it('Should register the same destination once per andDispatchAs call', function () {
+      const on = new On(config)
+
+      on
+        .eventReceived('testEvent')
+        .andDispatchAs('newEvent')
+        .andDispatchAs('otherEvent')
+        .andDispatchAs('newEvent')
+
+      expect(on._getEvents('topic')[0].dispatchAs).to.deep.equal([
+        'newEvent',
+        'otherEvent',
+        'newEvent',
+      ])
+    })
+  })
+
+  describe('sendToQueue alias', function () {
+    it('Should behave like andDispatchAs', function () {
+      const on = new On(config)
+
+      on
+        .eventReceived('legacyDispatchEvent')
+        .sendToQueue('legacyTargetQueue')
+
+      expect(on._getEvents('topic')[0].dispatchAs).to.deep.equal(['legacyTargetQueue'])
+    })
+  })
+
+  describe('Fluent log marker', function () {
+    it('Should mark the event being registered as logged and keep the chain fluent', function () {
+      const on = new On(config)
+
+      const result = on
+        .eventReceived('loggedEvent')
+        .log()
+        .do(nullMe)
+
+      expect(result).to.equal(on)
+      expect(on.debugEnabled).to.equal(false)
+      expect(on._getEvents('topic')[0]).to.have.property('isLogged', true)
+    })
+
+    it('Should log through the configured logger only for the marked event', function () {
+      const printed = []
+      const logger = {
+        info: function (message) { printed.push(['info', message]) },
+        error: function () {},
+        warning: function () {},
+      }
+
+      const on = new On(Object.assign({}, config, { logger: logger }))
+
+      // log() marks the event being registered, so it must come after
+      // withProperties() and before do() — the registration modifiers all
+      // throw when nothing is being registered
+      on
+        .eventReceived('loggedEvent')
+        .withProperties(['name'])
+        .log()
+        .do(nullMe)
+      on
+        .eventReceived('quietEvent')
+        .do(nullMe)
+
+      // log() announces itself through _log (info), which only prints in
+      // debug mode; the per-event opt-in is applied right after
+      expect(printed).to.deep.equal([])
+
+      on._eventLog('info', 'loggedEvent', 'printed')
+      on._eventLog('info', 'quietEvent', 'not printed')
+      on._eventLog('info', 'unknownEvent', 'not printed')
+
+      expect(printed).to.deep.equal([['info', 'printed']])
+    })
+
+    it('Should not throw when log() runs without an event being registered', function () {
+      const on = new On(config)
+
+      expect(function () {
+        on.log()
+      }).to.not.throw()
+      expect(on.events).to.have.lengthOf(0)
+    })
+  })
+
+  describe('Registration guards', function () {
+    it('Should require redis for eventReceived', function () {
+      const mqOnlyConfig = {
+        mq: config.mq,
+        reconnectOnClose: false,
+      }
+      const on = new On(mqOnlyConfig)
+
+      expect(function () {
+        on.eventReceived('noRedisEvent')
+      }).to.throw('Redis config must be set if enabling events listeners')
+      expect(on.events).to.have.lengthOf(0)
+    })
+
+    it('Should throw when an event is registered twice as a broadcast', function () {
+      const on = new On(config)
+
+      on.broadcastReceived('broadcastEvent')
+      expect(on._getEvents('topic')[0]).to.have.property('asTask', true)
+
+      expect(function () {
+        on.broadcastReceived('broadcastEvent')
+      }).to.throw('The event broadcastEvent is already registered, possibly as eventReceived')
+      expect(on._getEvents('topic')).to.have.lengthOf(1)
+    })
+
+    it('Should throw when a request is registered twice', function () {
+      const on = new On(config)
+
+      on.requestReceived('statusRequest')
+      expect(function () {
+        on.requestReceived('statusRequest')
+      }).to.throw('Request statusRequest already registered')
+      expect(on._getEvents('rpc')).to.have.lengthOf(1)
+    })
+
+    it('Should refuse a delayed task when the delayed exchange is not configured', function () {
+      const on = new On(config)
+
+      expect(function () {
+        on.taskReceived('delayedTask', { isDelayed: true })
+      }).to.throw(/delayed_exchange_name is empty/)
+      expect(on.events).to.have.lengthOf(0)
+    })
+
+    it('Should refuse manual ack on anything but a regular queue task', function () {
+      const on = new On(config)
+
+      on.eventReceived('topicWithManualAck')
+      expect(function () {
+        on.ackAfterProcessing()
+      }).to.throw(/only supported for queue events/)
+    })
+
+    it('Should refuse manual ack before taskReceived', function () {
+      const on = new On(config)
+
+      // no event is being registered, so the ack mode is rejected before the
+      // "was taskReceived called first" check is reached
+      expect(function () {
+        on.ackAfterProcessing()
+      }).to.throw(/only supported for queue events/)
+    })
+
+    it('Should refuse respond() before requestReceived', function () {
+      const on = new On(config)
+
+      expect(function () {
+        on.respond()
+      }).to.throw('The event hasn\'t been registered first')
+    })
+  })
+
+  describe('Event names', function () {
+    it('Should list the names of the events of a type in registration order', function () {
+      const on = new On(config)
+
+      on.taskReceived('firstQueue')
+      on.eventReceived('firstTopic')
+      on.taskReceived('secondQueue')
+      on.requestReceived('aRequest')
+
+      expect(on._getEventNames('queue')).to.deep.equal(['firstQueue', 'secondQueue'])
+      expect(on._getEventNames('topic')).to.deep.equal(['firstTopic'])
+      expect(on._getEventNames('rpc')).to.deep.equal(['aRequest'])
+      expect(on._getEventNames('delayedQueue')).to.deep.equal([])
+      expect(on._getEventNames('unknown')).to.deep.equal([])
+    })
+
+    it('Should return the first event with a name whatever its type', function () {
+      const on = new On(config)
+
+      on.taskReceived('sharedName')
+      on.eventReceived('sharedName')
+
+      expect(on._getEventByName('sharedName')).to.have.property('type', 'queue')
+      expect(on._getEventByName('missing')).to.equal(undefined)
+    })
+  })
+
+  describe('Stopping listeners', function () {
+    it('Should remove every local listener and keep the chain returnable', function () {
+      const on = new On(config)
+      on.on('error', nullMe)
+      on.on('custom', nullMe)
+
+      const result = on._stopEventsListeners()
+
+      expect(result).to.equal(on)
+      expect(on.listenerCount('error')).to.equal(0)
+      expect(on.listenerCount('custom')).to.equal(0)
+    })
   })
 
   describe('RPC', function () {
@@ -622,5 +821,138 @@ describe('On.js', function () {
       await on.tearDown()
       expect(on.getConnection()).to.not.exist
     })
+  })
+
+  describe('tearDown error containment', function () {
+    it('Should log and swallow a failing MQ connection close', async function () {
+      const logged = []
+      const logger = {
+        info: function () {},
+        error: function (message, metadata) { logged.push([message, metadata]) },
+        warning: function () {},
+      }
+
+      const on = new On(Object.assign({}, config, { logger: logger }))
+      on.setConnection({
+        close: async function () {
+          throw new Error('close boom')
+        },
+      })
+
+      await on.tearDown()
+
+      expect(on.getConnection()).to.not.exist
+      expect(logged).to.have.lengthOf(1)
+      expect(logged[0][0]).to.equal('Error closing MQ connection')
+      expect(logged[0][1]).to.have.property('message', 'close boom')
+    })
+
+    it('Should close the worker even when the redis queue close fails', async function () {
+      const logged = []
+      const logger = {
+        info: function () {},
+        error: function (message) { logged.push(message) },
+        warning: function () {},
+      }
+
+      const on = new On(Object.assign({}, config, { logger: logger }))
+      on.eventReceived('redisCloseFailure')
+
+      const closed = []
+      on.events[0].redisQueue.close = async function () {
+        throw new Error('queue close boom')
+      }
+      on.events[0].redisWorker = {
+        close: async function () {
+          closed.push('worker')
+        },
+      }
+
+      await on.tearDown()
+
+      expect(closed).to.deep.equal(['worker'])
+      expect(logged).to.deep.equal(['Error closing redis queue'])
+    })
+
+    it('Should log and swallow a failing redis worker close', async function () {
+      const logged = []
+      const logger = {
+        info: function () {},
+        error: function (message) { logged.push(message) },
+        warning: function () {},
+      }
+
+      const on = new On(Object.assign({}, config, { logger: logger }))
+      on.eventReceived('workerCloseFailure')
+
+      const closed = []
+      on.events[0].redisQueue.close = async function () { closed.push('queue') }
+      on.events[0].redisWorker = {
+        close: async function () {
+          throw new Error('worker close boom')
+        },
+      }
+
+      await on.tearDown()
+
+      expect(closed).to.deep.equal(['queue'])
+      expect(logged).to.deep.equal(['Error closing redis worker'])
+    })
+  })
+})
+
+describe('Default logger', function () {
+  const utils = require('../../lib/utils')
+  const originalConsole = {
+    log: console.log,
+    error: console.error,
+  }
+  let calls = []
+
+  beforeEach(function () {
+    calls = []
+    console.log = function (...args) { calls.push(['log', args]) }
+    console.error = function (...args) { calls.push(['error', args]) }
+  })
+
+  afterEach(function () {
+    console.log = originalConsole.log
+    console.error = originalConsole.error
+  })
+
+  it('Should log info and warning on the console with optional data', function () {
+    utils.logger.info('plain info')
+    utils.logger.info('info with data', { id: 1 })
+    utils.logger.warning('plain warning')
+    utils.logger.warning('warning with data', { id: 2 })
+
+    expect(calls).to.deep.equal([
+      ['log', ['plain info']],
+      ['log', ['info with data', { id: 1 }]],
+      ['log', ['plain warning']],
+      ['log', ['warning with data', { id: 2 }]],
+    ])
+  })
+
+  it('Should log errors on the error stream with optional data', function () {
+    utils.logger.error('plain error')
+    utils.logger.error('error with data', new Error('boom'))
+
+    expect(calls).to.have.lengthOf(2)
+    expect(calls[0]).to.deep.equal(['error', ['plain error']])
+    expect(calls[1][0]).to.equal('error')
+    expect(calls[1][1][0]).to.equal('error with data')
+    expect(calls[1][1][1]).to.have.property('message', 'boom')
+  })
+
+  it('Should log only what the legacy next() callback receives', function () {
+    utils.next(null, null)
+    utils.next(null, 'result')
+    utils.next(new Error('failed'))
+
+    expect(calls).to.have.lengthOf(2)
+    expect(calls[0]).to.deep.equal(['log', ['result']])
+    expect(calls[1][0]).to.equal('log')
+    expect(calls[1][1][0]).to.be.an('error').with.property('message', 'failed')
   })
 })

@@ -537,3 +537,186 @@ describe('Queue dispatcher validation containment', function () {
     expect(executedAfter).to.equal(1)
   })
 })
+
+describe('Topic dispatch branches', function () {
+  this.timeout(10000)
+
+  const config = {
+    mq: {
+      exchange_name: 'onjs_test',
+      url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
+      connectMaxAttempts: 1,
+      delayMS: 10,
+    },
+    redis: {
+      port: REDIS_PORT,
+      host: 'redis',
+    },
+    reconnectOnClose: false,
+  }
+
+  const on = new On(config)
+
+  afterEach(async function () {
+    return await on.tearDown()
+  })
+
+  it('Should redispatch a received topic to its destination queues', async function () {
+    const dispatched = []
+
+    on.eventReceived('dispatchedTopic').andDispatchAs('dispatchedTargetQueue')
+
+    await on.init()
+    on.queueInstance.send = async function (newEventName, data) {
+      dispatched.push([newEventName, data])
+    }
+
+    const event = on._getEventByName('dispatchedTopic')
+    const payload = { tid: `topic-dispatch-${Date.now()}`, name: 'Flash' }
+    await on._onTopicReceived(event, payload)
+
+    let waited = 0
+    while (dispatched.length === 0 && waited < 3000) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      waited += 50
+    }
+
+    expect(dispatched).to.deep.equal([['dispatchedTargetQueue', payload]])
+  })
+
+  it('Should execute a broadcast topic as a task in every process', async function () {
+    const executed = []
+
+    on
+      .broadcastReceived('broadcastTopic')
+      .do(function (incomingData) {
+        executed.push(incomingData)
+      })
+
+    const event = on._getEventByName('broadcastTopic')
+    await on._onTopicReceived(event, { name: 'Flash' })
+
+    expect(executed).to.deep.equal([{ name: 'Flash' }])
+  })
+
+  it('Should send a plain topic to redis and execute it once', async function () {
+    const executed = []
+
+    on
+      .eventReceived('redisTopic')
+      .do(function (incomingData) {
+        executed.push(incomingData)
+      })
+
+    const event = on._getEventByName('redisTopic')
+    const payload = { tid: `topic-redis-${Date.now()}`, name: 'Flash' }
+    await on._onTopicReceived(event, payload)
+
+    let waited = 0
+    while (executed.length === 0 && waited < 5000) {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      waited += 50
+    }
+
+    expect(executed).to.deep.equal([payload])
+  })
+})
+
+describe('Task action settlement', function () {
+  it('Should wait for every action before rejecting in awaitActions mode', async function () {
+    const on = new On({
+      mq: {
+        exchange_name: 'onjs_test',
+        url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
+        connectMaxAttempts: 1,
+        delayMS: 10,
+      },
+      redis: { port: REDIS_PORT, host: 'redis' },
+      reconnectOnClose: false,
+    })
+    const finished = []
+
+    on.taskReceived('awaitedTask')
+      .andProcess(async function () {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        finished.push('slow')
+      })
+      .andProcess(function () {
+        throw new Error('first failure')
+      })
+
+    const task = on._getEventByName('awaitedTask')
+
+    let rejectedWith = null
+    try {
+      await on._onTaskReceived(task, { name: 'Flash' }, { awaitActions: true })
+    } catch (err) {
+      rejectedWith = err
+    }
+
+    // the sibling action must have settled before the rejection propagated
+    expect(finished).to.deep.equal(['slow'])
+    expect(rejectedWith).to.have.property('message', 'first failure')
+  })
+
+  it('Should reject with the first rejection in awaitActions mode', async function () {
+    const on = new On({
+      mq: {
+        exchange_name: 'onjs_test',
+        url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
+        connectMaxAttempts: 1,
+        delayMS: 10,
+      },
+      redis: { port: REDIS_PORT, host: 'redis' },
+      reconnectOnClose: false,
+    })
+
+    on.taskReceived('twoFailuresTask')
+      .andProcess(async function () {
+        throw new Error('first failure')
+      })
+      .andProcess(async function () {
+        throw new Error('second failure')
+      })
+
+    const task = on._getEventByName('twoFailuresTask')
+
+    let rejectedWith = null
+    try {
+      await on._onTaskReceived(task, {}, { awaitActions: true })
+    } catch (err) {
+      rejectedWith = err
+    }
+
+    expect(rejectedWith).to.have.property('message', 'first failure')
+  })
+
+  it('Should settle without throwing in legacy mode when an action rejects', async function () {
+    const on = new On({
+      mq: {
+        exchange_name: 'onjs_test',
+        url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
+        connectMaxAttempts: 1,
+        delayMS: 10,
+      },
+      redis: { port: REDIS_PORT, host: 'redis' },
+      reconnectOnClose: false,
+    })
+    const executed = []
+
+    on.taskReceived('legacyFailureTask')
+      .andProcess(async function () {
+        executed.push('ok')
+      })
+      .andProcess(async function () {
+        throw new Error('legacy failure')
+      })
+
+    const task = on._getEventByName('legacyFailureTask')
+    // legacy mode resolves (does not reject) and logs the settled results
+    const results = await on._onTaskReceived(task, {})
+
+    expect(executed).to.deep.equal(['ok'])
+    expect(results).to.equal(undefined)
+  })
+})

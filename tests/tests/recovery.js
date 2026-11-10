@@ -279,4 +279,48 @@ describe('Consumer recovery', function () {
 
     expect(stubs.listenCalls.length).to.equal(2)
   })
+
+  it('Should contain a failure raised while recovering', async function () {
+    const logged = { error: [] }
+    const logger = {
+      info: function () {},
+      error: function (message, metadata) {
+        logged.error.push([message, metadata])
+      },
+    }
+
+    const stubs = createStubbedOn({ reconnectOnClose: true, logger: logger })
+
+    // the recovery path itself is not the subject here: it fails, and the
+    // retry recursion sleeps with the capped exponential backoff (30s once
+    // the attempt count grows), so it is turned into a single failing attempt
+    // the retry recursion is driven by the test itself (no sleeping), so a
+    // single attempt rejection is enough to reach the containment
+    let attempts = 0
+    stubs.onInstance._attemptRecovery = async function () {
+      attempts++
+      throw new Error('retry boom')
+    }
+
+    const onRejection = (err) => {
+      throw err
+    }
+    process.on('unhandledRejection', onRejection)
+    try {
+      // without containment the retry rejection would reject this call (and
+      // escape as an unhandled rejection from the MQ event handler that calls
+      // it) and _isRecovering would stay true, blocking every later recovery
+      await stubs.onInstance._recoverFromChannelLoss('Lost channel')
+    } finally {
+      process.removeListener('unhandledRejection', onRejection)
+    }
+
+    // the recovery was attempted once and the failure was contained
+    expect(attempts).to.equal(1)
+    expect(stubs.onInstance._isRecovering).to.equal(false)
+    const messages = logged.error.map((entry) => entry[0])
+    expect(messages).to.deep.include('Recovery failed')
+    const recoveryFailure = logged.error.find((entry) => entry[0] === 'Recovery failed')
+    expect(recoveryFailure[1]).to.have.property('message', 'retry boom')
+  })
 })
