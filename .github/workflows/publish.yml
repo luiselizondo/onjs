@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - v2
 
 # npm Trusted Publishing: the package is configured on npmjs.com to trust
 # this repository + workflow filename, so publishing authenticates via OIDC
@@ -55,5 +55,18 @@ jobs:
         run: npm ci
       - name: Testing
         run: npm test
+      - name: Check if this version is already published
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "onjs@$VERSION" version > /dev/null 2>&1; then
+            echo "This version ($VERSION) is already on npm, skipping publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Publishing to NPM
-        run: npm publish
+        # 2.x is the maintenance line: publish under the `v2` dist-tag so the
+        # npm `latest` tag keeps pointing at 3.x.
+        if: steps.version.outputs.publish == 'true'
+        run: npm publish --tag v2

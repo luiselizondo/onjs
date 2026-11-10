@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - v2
   pull_request:
     branches:
       - '**'
@@ -22,8 +22,8 @@ concurrency:
 
 jobs:
   test:
-    # This job runs on pull requests and push to master branch
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/master')
+    # This job runs on pull requests and push to the v2 branch
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/v2')
     runs-on: ubuntu-latest
     container: node:16-bullseye
     services:
@@ -45,6 +45,11 @@ jobs:
           RABBITMQ_DEFAULT_USER: rabbitmq
           RABBITMQ_DEFAULT_PASS: rabbitmq
           RABBITMQ_DEFAULT_VHOST: /
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
