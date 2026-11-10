@@ -1,4 +1,4 @@
-const should = require('should')
+const { expect } = require('chai')
 const EventEmitter = require('events')
 const On = require('../../index')
 
@@ -40,36 +40,36 @@ const FLUENT_METHODS = [
 
 describe('On public contract', function () {
   it('exports the On class extending EventEmitter', function () {
-    On.should.be.a.Function()
+    expect(On).to.be.a('function')
     const on = new On(config)
-    on.should.be.instanceOf(EventEmitter)
+    expect(on).to.be.an.instanceOf(EventEmitter)
   })
 
   it('does not connect on instantiation', function () {
     const on = new On(config)
-    should(on.getConnection()).be.undefined()
-    on.events.should.be.an.Array().and.have.length(0)
+    expect(on.getConnection()).to.be.undefined
+    expect(on.events).to.be.an('array').and.have.lengthOf(0)
   })
 
   it('exposes the fluent registration surface on the prototype', function () {
     FLUENT_METHODS.forEach(function (method) {
-      On.prototype[method].should.be.a.Function()
+      expect(On.prototype[method]).to.be.a('function')
     })
   })
 
   it('pins the arity of the registration methods', function () {
-    On.prototype.eventReceived.should.have.property('length', 1)
+    expect(On.prototype.eventReceived).to.have.property('length', 1)
     // options is a defaulted parameter, so Function#length only counts the name
-    On.prototype.taskReceived.should.have.property('length', 1)
-    On.prototype.withProperties.should.have.property('length', 1)
-    On.prototype.do.should.have.property('length', 1)
+    expect(On.prototype.taskReceived).to.have.property('length', 1)
+    expect(On.prototype.withProperties).to.have.property('length', 1)
+    expect(On.prototype.do).to.have.property('length', 1)
   })
 
   it('defaults taskReceived options to { isDelayed: false }', function () {
     const on = new On(config)
     on.taskReceived('contractTask')
-    on.events[0].should.have.property('eventName', 'contractTask')
-    on.events[0].should.have.property('type', 'queue')
+    expect(on.events[0]).to.have.property('eventName', 'contractTask')
+    expect(on.events[0]).to.have.property('type', 'queue')
   })
 
   it('honours the optional taskReceived options argument', function () {
@@ -77,7 +77,7 @@ describe('On public contract', function () {
     const registerDelayed = function () {
       on.taskReceived('contractDelayedTask', { isDelayed: true })
     }
-    registerDelayed.should.throw(/delayed_exchange_name is empty/)
+    expect(registerDelayed).to.throw(/delayed_exchange_name is empty/)
   })
 
   it('registers eventReceived(name).do(fn) with the documented event shape', function () {
@@ -88,13 +88,13 @@ describe('On public contract', function () {
     const on = new On(config)
     on.eventReceived('contractEvent').do(action)
 
-    on.events.should.have.length(1)
+    expect(on.events).to.have.lengthOf(1)
     const event = on.events[0]
 
-    event.should.have.property('eventName', 'contractEvent')
-    event.should.have.property('type', 'topic')
-    event.should.have.property('redisQueue')
-    event.should.have.property('actions').which.is.an.Array().and.deepEqual([action])
-    event.should.have.property('context', on)
+    expect(event).to.have.property('eventName', 'contractEvent')
+    expect(event).to.have.property('type', 'topic')
+    expect(event).to.have.property('redisQueue')
+    expect(event).to.have.property('actions').which.is.an('array').and.deep.equal([action])
+    expect(event).to.have.property('context', on)
   })
 })

@@ -25,12 +25,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^9",
+    "chai": "^4.5.0",
     "eslint": "^9",
-    "mocha": "^11",
-    "should": "^13"
+    "mocha": "^11"
   },
   "dependencies": {
-    "rabbitmq-lib": "^3.0.0",
-    "bullmq": "^5.0.0"
+    "bullmq": "^5.0.0",
+    "rabbitmq-lib": "^3.0.0"
   }
 }
