@@ -16,6 +16,7 @@ export default [
         Buffer: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        setImmediate: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
         __dirname: 'readonly',

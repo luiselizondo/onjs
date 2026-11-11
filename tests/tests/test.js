@@ -343,10 +343,9 @@ describe('On.js', function () {
       const on = new On(config)
 
       on.taskReceived('testEvent')
-      on.eventReceived('testEvent')
 
-      const eventExists = on._eventExists('testEvent', 'queue')
-      expect(eventExists).to.be.true
+      const eventExists = on._eventExists('testEvent', 'topic')
+      expect(eventExists).to.be.false
     })
 
     it('Should detect that an event of type topic exists when another event of type queue exists with the same name', function () {

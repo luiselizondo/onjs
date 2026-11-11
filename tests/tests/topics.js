@@ -137,9 +137,23 @@ describe('Topics', function () {
   it('Should not surface an unhandled rejection when a topic payload is invalid and no error listener exists', async function () {
     let executed = 0
     const rejections = []
+    const validationFailures = []
     const onRejection = (err) => rejections.push(err)
 
-    on
+    // A dedicated instance with a recording logger: the validation-failure log
+    // line is the deterministic signal that the invalid payload actually
+    // reached the validation handler (publishing only confirms broker
+    // acceptance, so a blind sleep could never prove delivery).
+    const recordingLogger = {
+      info () {},
+      warning () {},
+      error (message, data) {
+        validationFailures.push({ message, data })
+      },
+    }
+    const scopedOn = new On({ ...config, logger: recordingLogger })
+
+    scopedOn
       .eventReceived('unlistenedContainedTopic')
       .withProperties(['name'])
       .do(function () {
@@ -150,13 +164,26 @@ describe('Topics', function () {
     // inside the async listener and would escape as an unhandled rejection
     process.on('unhandledRejection', onRejection)
     try {
-      await on.init()
+      await scopedOn.init()
       await publisher.publish('unlistenedContainedTopic', { other: 'value' })
-      await new Promise((resolve) => setTimeout(resolve, 300))
+
+      // wait until the payload is proven to have reached the validation
+      // handler, then one event-loop turn for any escaping rejection
+      let waited = 0
+      while (validationFailures.length === 0 && waited < 3000) {
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        waited += 50
+      }
+      await new Promise((resolve) => setImmediate(resolve))
     } finally {
       process.removeListener('unhandledRejection', onRejection)
+      await scopedOn.tearDown().catch(() => {})
     }
 
+    // an invalid payload may be redelivered; what matters is that every
+    // delivery was dropped by validation (never executed) and none of them
+    // escaped as an unhandled rejection
+    expect(validationFailures.length).to.be.above(0)
     expect(rejections).to.have.lengthOf(0)
     expect(executed).to.equal(0)
   })
