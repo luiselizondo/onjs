@@ -32,7 +32,7 @@ jobs:
           RABBITMQ_DEFAULT_PASS: rabbitmq
           RABBITMQ_DEFAULT_VHOST: /
         options: >-
-          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-cmd "rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_port_connectivity"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
