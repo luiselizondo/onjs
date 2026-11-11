@@ -1,16 +1,16 @@
-var should = require('should')
-var On = require('../../index')
-var EventEmitter = require('events');
+const { expect } = require('chai')
+const On = require('../../index')
+const EventEmitter = require('events')
 class Events extends EventEmitter {}
-var MQ = require('rabbitmq-lib').MQ
-var RPC = require('rabbitmq-lib').RPC
+const MQ = require('rabbitmq-lib').MQ
+const RPC = require('rabbitmq-lib').RPC
 
-var REDIS_PORT = 6379
+const REDIS_PORT = 6379
 
 describe('RPC', function () {
   this.timeout(10000)
 
-  var config = {
+  const config = {
     mq: {
       exchange_name: 'onjs_test',
       url: 'amqp://rabbitmq:rabbitmq@rabbitmq:5672/',
@@ -19,20 +19,20 @@ describe('RPC', function () {
     },
     redis: {
       port: REDIS_PORT,
-      host: 'redis'
+      host: 'redis',
     },
     reconnectOnClose: false,
   }
 
-  var mq = new MQ(config.mq)
-  var sender = new RPC()
-  var on = new On(config)
+  const mq = new MQ(config.mq)
+  const sender = new RPC()
+  const on = new On(config)
   on.debug()
 
   before(async function () {
     await mq.connect()
     
-    var connection = await mq.connect()
+    const connection = await mq.connect()
     return sender.setConnection(connection)
   })
 
@@ -45,11 +45,12 @@ describe('RPC', function () {
   })
 
   it('Should execute a queue event', async function () {
-    function execution(input, next) {
+    function execution (input, next) {
+      let response
       if (input.name === 'Batman') {
-        var response = {
+        response = {
           name: 'Batman',
-          superpower: 'None'
+          superpower: 'None',
         }
       }
 
@@ -57,21 +58,21 @@ describe('RPC', function () {
     }
 
     on
-    .requestReceived('getSuperhero')
-    .withProperties(['name'])
-    .respond()
-    .afterExecuting(execution)
+      .requestReceived('getSuperhero')
+      .withProperties(['name'])
+      .respond()
+      .afterExecuting(execution)
 
     await on.init()
 
-    var data = await sender.send('getSuperhero', {
-      name: 'Batman'
+    const data = await sender.send('getSuperhero', {
+      name: 'Batman',
     })
     
-    var result = JSON.parse(data)
-    result.should.have.property('results')
-    result.should.have.property('type', 'success')
-    result.results.should.have.property('name', 'Batman')
-    result.results.should.have.property('superpower', 'None')
-  });
+    const result = JSON.parse(data)
+    expect(result).to.have.property('results')
+    expect(result).to.have.property('type', 'success')
+    expect(result.results).to.have.property('name', 'Batman')
+    expect(result.results).to.have.property('superpower', 'None')
+  })
 })

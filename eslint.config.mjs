@@ -16,6 +16,7 @@ export default [
         Buffer: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        setImmediate: 'readonly',
         setInterval: 'readonly',
         clearInterval: 'readonly',
         __dirname: 'readonly',
@@ -33,6 +34,9 @@ export default [
       quotes: ['error', 'single'],
       indent: ['error', 2],
       'no-var': 'error',
+      'prefer-const': 'error',
+      'prefer-template': 'error',
+      'template-curly-spacing': ['error', 'never'],
       'space-before-function-paren': ['error', 'always'],
       'comma-dangle': ['error', 'always-multiline'],
       'max-len': ['error', {
@@ -43,23 +47,20 @@ export default [
     }
   },
   {
-    // Legacy test files are not bulk-reformatted: style rules are off for them,
-    // and so is no-unused-vars (they carry unused legacy imports/args). no-undef
-    // stays active from js.configs.recommended, and lib/** keeps the strict
-    // configuration above.
+    // Tests are formatted with the same style rules as lib/** (the block
+    // above): ESLint fixes them on save, including no-var and prefer-const.
+    // Only max-len stays off (long string literals cannot be auto-wrapped).
+    // Correctness rules (no-undef, no-unused-vars) stay active.
     files: ['tests/**/*.js'],
     rules: {
-      'no-var': 'off',
-      quotes: 'off',
-      semi: 'off',
-      'comma-dangle': 'off',
       'max-len': 'off',
-      'space-before-function-paren': 'off',
-      indent: 'off',
-      // Off for the legacy tests: they carry unused imports/args (`should`,
-      // `MQ`, `incomingData`, `data`, `eventsInstance`) that would require
-      // editing tests/** to fix. lib/** keeps the rule active.
-      'no-unused-vars': 'off'
-    }
+      'no-unused-vars': [
+        'error',
+        {
+          varsIgnorePattern: '^(Events|MQ|eventsInstance)$',
+          argsIgnorePattern: '^(data|incomingData)$',
+        },
+      ],
+    },
   }
 ]

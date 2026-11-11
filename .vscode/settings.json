@@ -1,0 +1,12 @@
+{
+  // onjs is formatted by ESLint (see eslint.config.mjs, `npm run lint`).
+  // Prettier is NOT used in this repo: it is not a dependency, and its default
+  // settings (double quotes, semicolons) conflict with the ESLint rules
+  // (single quotes, no semicolons). Never let it run on save here.
+  "editor.formatOnSave": false,
+  "prettier.enable": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.workingDirectories": ["./"]
+}
