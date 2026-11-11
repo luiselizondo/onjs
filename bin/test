@@ -25,7 +25,7 @@ fi
 
 if [ ! -d "node_modules" ]; then
   echo "Installing dependencies"
-  docker run --rm --network onjs_test -v ${PWD}:/app ${EXTRA_MOUNTS} -w /app rever/node:22-alpine npm install
+  docker run --rm --network onjs_test -v ${PWD}:/app ${EXTRA_MOUNTS} -w /app node:22-alpine npm install
 fi
 
 echo "Running the test suite in a container (broker: rabbitmq, redis: redis)"
@@ -34,4 +34,4 @@ docker run --rm --name onjs_test_runner \
   -v ${PWD}:/app ${EXTRA_MOUNTS} -w /app \
   -e "NODE_ENV=test" \
   -e "ONJS_DELAYED_PLUGIN_TESTS=true" \
-  rever/node:22-alpine npm test
+  node:22-alpine npm test
